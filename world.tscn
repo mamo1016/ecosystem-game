@@ -1,0 +1,60 @@
+[gd_scene format=3 uid="uid://b1ecosim"]
+
+[ext_resource type="Script" path="res://world.gd" id="1_world"]
+
+[node name="World" type="Node2D"]
+script = ExtResource("1_world")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="ScoreLabel" type="Label" parent="CanvasLayer"]
+offset_left = 10.0
+offset_top = 8.0
+offset_right = 600.0
+offset_bottom = 36.0
+theme_override_font_sizes/font_size = 20
+text = "Map Covered: 0.0%"
+
+[node name="SeedLabel" type="Label" parent="CanvasLayer"]
+offset_left = 10.0
+offset_top = 36.0
+offset_right = 400.0
+offset_bottom = 64.0
+theme_override_font_sizes/font_size = 18
+text = "Seeds: 20"
+
+[node name="RestartButton" type="Button" parent="CanvasLayer"]
+visible = false
+offset_left = 400.0
+offset_top = 330.0
+offset_right = 700.0
+offset_bottom = 380.0
+theme_override_font_sizes/font_size = 22
+text = "Restart"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer"]
+offset_left = 200.0
+offset_top = 672.0
+offset_right = 900.0
+offset_bottom = 720.0
+alignment = 1
+
+[node name="BtnGrass" type="Button" parent="CanvasLayer/HBoxContainer"]
+custom_minimum_size = Vector2(200, 44)
+theme_override_font_sizes/font_size = 18
+text = "Grass  [Cost: 3]"
+
+[node name="BtnSuper" type="Button" parent="CanvasLayer/HBoxContainer"]
+custom_minimum_size = Vector2(200, 44)
+theme_override_font_sizes/font_size = 18
+text = "Super Seed  [Cost: 10]"
+
+[node name="BtnPredator" type="Button" parent="CanvasLayer/HBoxContainer"]
+custom_minimum_size = Vector2(220, 44)
+theme_override_font_sizes/font_size = 18
+text = "Apex Hunter  [Cost: 30]"
+
+[connection signal="pressed" from="CanvasLayer/RestartButton" to="." method="_on_restart_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/HBoxContainer/BtnGrass" to="." method="_on_btn_grass_pressed"]
+[connection signal="pressed" from="CanvasLayer/HBoxContainer/BtnSuper" to="." method="_on_btn_super_pressed"]
+[connection signal="pressed" from="CanvasLayer/HBoxContainer/BtnPredator" to="." method="_on_btn_predator_pressed"]
