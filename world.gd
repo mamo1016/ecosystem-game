@@ -294,7 +294,7 @@ func run_plant_logic() -> void:
 	for pos in mature_arr:
 		for d in DIRS:
 			var neighbor: Vector2i = pos + d
-			if get_tile(neighbor) == EMPTY and randf() < 0.05:
+			if get_tile(neighbor) == EMPTY and randf() < 0.01:
 				set_tile(neighbor, GRASS)
 				plant_growth[neighbor] = 0
 
