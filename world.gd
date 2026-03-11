@@ -66,6 +66,9 @@ var plant_growth: Dictionary = {}
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
+var predator_texture: Texture2D
+var apex_texture: Texture2D
+
 func _ready() -> void:
 	var canvas = get_node_or_null("CanvasLayer")
 	if canvas != null:
@@ -78,6 +81,8 @@ func _ready() -> void:
 	_init_grid()
 	update_button_visuals()
 	update_ui()
+	predator_texture = load("res://predator_spritesheet.png")
+	apex_texture     = load("res://apex_spritesheet.png")
 
 func _process(delta: float) -> void:
 	if not game_active: return
@@ -137,18 +142,39 @@ func _draw() -> void:
 			elif tile_id != EMPTY:
 				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), _tile_colour(tile_id))
 
-	for p in predators: _draw_animal(p, COLOR_PREDATOR)
-	for a in apexes:    _draw_animal(a, COLOR_APEX)
+	for p in predators: _draw_animal(p, COLOR_PREDATOR, predator_texture, STARVATION_LIMIT)
+	for a in apexes:    _draw_animal(a, COLOR_APEX,     apex_texture,     APEX_STARVATION)
 
 	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color.YELLOW, false, 2.0)
 
-func _draw_animal(animal: Dictionary, color: Color) -> void:
+func _draw_animal(animal: Dictionary, color: Color, texture: Texture2D, starvation_limit: int) -> void:
 	var px: float = MAP_OFFSET.x + animal.pos.x * TILE_SIZE
 	var py: float = MAP_OFFSET.y + animal.pos.y * TILE_SIZE
 	var w: float = animal.size * TILE_SIZE
 	var h: float = animal.size * TILE_SIZE
-	draw_rect(Rect2(px, py, w, h), color)
-	_draw_facing_indicator(animal.pos, animal.facing, animal.size)
+	if texture:
+		var fw: float = texture.get_width()  / 4.0
+		var fh: float = texture.get_height() / 4.0
+		var col: int = _facing_col(animal.facing)
+		var row: int = _hunger_row(animal.hunger, starvation_limit)
+		var region := Rect2(col * fw, row * fh, fw, fh)
+		draw_texture_rect_region(texture, Rect2(px, py, w, h), region)
+	else:
+		draw_rect(Rect2(px, py, w, h), color)
+
+func _facing_col(facing: Vector2i) -> int:
+	match facing:
+		Vector2i(1,  0): return 0   # right
+		Vector2i(-1, 0): return 1   # left
+		Vector2i(0, -1): return 2   # up
+		_:               return 3   # down
+
+func _hunger_row(hunger: int, limit: int) -> int:
+	var pct := float(hunger) / float(limit)
+	if pct < 0.15: return 0   # full
+	if pct < 0.40: return 1   # satisfied
+	if pct < 0.70: return 2   # hungry
+	return 3                   # starving
 
 func _draw_facing_indicator(pos: Vector2i, facing: Vector2i, size: int) -> void:
 	var cx: float = MAP_OFFSET.x + pos.x * TILE_SIZE + (size * TILE_SIZE) * 0.5
