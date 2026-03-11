@@ -295,7 +295,7 @@ func run_plant_logic() -> void:
 	for pos in mature_arr:
 		for d in DIRS:
 			var neighbor: Vector2i = pos + d
-			if get_tile(neighbor) == EMPTY:
+			if get_tile(neighbor) == EMPTY and randf() < 0.05:
 				set_tile(neighbor, GRASS)
 				plant_growth[neighbor] = 0
 
@@ -395,6 +395,13 @@ func run_predator_logic() -> void:
 
 		if p.hunger >= STARVATION_LIMIT: continue
 
+		var move_timer = p.get("move_cooldown", 0)
+		if move_timer > 0:
+			p.move_cooldown = move_timer - 1
+			p.hunger += 1
+			alive.append(p)
+			continue
+
 		var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE))
 		if eaten_count > 0:
 			p.eating = EAT_TURNS
@@ -422,6 +429,9 @@ func run_predator_logic() -> void:
 					moved = true
 					break
 
+		if moved:
+			p.move_cooldown = 2
+
 		p.hunger += 1
 		alive.append(p)
 	predators = alive
@@ -443,6 +453,13 @@ func run_apex_logic() -> void:
 			continue
 
 		if a.hunger >= APEX_STARVATION: continue
+
+		var move_timer = a.get("move_cooldown", 0)
+		if move_timer > 0:
+			a.move_cooldown = move_timer - 1
+			a.hunger += 1
+			alive.append(a)
+			continue
 
 		var my_rect = Rect2i(a.pos.x, a.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
 		var eaten = false
@@ -489,6 +506,9 @@ func run_apex_logic() -> void:
 					a.facing = d
 					moved = true
 					break
+
+		if moved:
+			a.move_cooldown = 2
 
 		a.hunger += 1
 		alive.append(a)
