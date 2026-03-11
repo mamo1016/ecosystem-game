@@ -21,9 +21,9 @@ const COLOR_APEX     = Color(0.15, 0.35, 0.95)
 const COLOR_MATURE   = Color(0.04, 0.50, 0.12)
 
 # --- MAP ---
-const MAP_WIDTH  = 120
-const MAP_HEIGHT = 80
-const TILE_SIZE  = 8
+const MAP_WIDTH  = 150
+const MAP_HEIGHT = 130
+const TILE_SIZE  = 6
 const ANIMAL_SIZE= 10
 const MAP_OFFSET = Vector2(0, 8)
 
@@ -72,10 +72,10 @@ func _ready() -> void:
 	if canvas != null:
 		var hbox = canvas.get_node_or_null("HBoxContainer")
 		if hbox != null:
-			hbox.position = Vector2(150, 660)
+			hbox.position = Vector2(120, 800)
 		var btn = canvas.get_node_or_null("RestartButton")
 		if btn != null:
-			btn.position = Vector2(350, 300)
+			btn.position = Vector2(400, 390)
 	_init_grid()
 	update_button_visuals()
 	update_ui()
