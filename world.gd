@@ -380,23 +380,6 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int) -
 func run_predator_logic() -> void:
 	var alive = []
 	for p in predators:
-		if p.eating > 0:
-			p.eating -= 1
-			if p.eating <= 0:
-				p.stomach += 1
-				var needed_food = p.size * 10
-				while p.stomach >= needed_food:
-					p.stomach -= needed_food
-					if p.size < 5:
-						p.size += 1
-						needed_food = p.size * 10
-					else:
-						p.hunger = 0
-						_try_spawn_offspring(p.pos, alive, p.size)
-				p.hunger = 0
-			alive.append(p)
-			continue
-
 		if p.hunger >= STARVATION_LIMIT: continue
 
 		var move_timer = p.get("move_cooldown", 0)
@@ -408,11 +391,16 @@ func run_predator_logic() -> void:
 
 		var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
 		if eaten_count > 0:
-			p.eating = EAT_TURNS
-			p.stomach += eaten_count - 1
+			p.stomach += eaten_count
 			p.hunger = 0
-			alive.append(p)
-			continue
+			var needed_food = p.size * 10
+			while p.stomach >= needed_food:
+				p.stomach -= needed_food
+				if p.size < 5:
+					p.size += 1
+					needed_food = p.size * 10
+				else:
+					_try_spawn_offspring(p.pos, alive, p.size)
 
 		var moved = false
 		var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
@@ -443,23 +431,6 @@ func run_predator_logic() -> void:
 func run_apex_logic() -> void:
 	var alive = []
 	for a in apexes:
-		if a.eating > 0:
-			a.eating -= 1
-			if a.eating <= 0:
-				a.stomach += 1
-				var needed_food = a.size
-				while a.stomach >= needed_food:
-					a.stomach -= needed_food
-					if a.size < 5:
-						a.size += 1
-						needed_food = a.size
-					else:
-						a.hunger = 0
-						_try_spawn_offspring(a.pos, alive, a.size)
-				a.hunger = 0
-			alive.append(a)
-			continue
-
 		if a.hunger >= APEX_STARVATION: continue
 
 		var move_timer = a.get("move_cooldown", 0)
@@ -470,19 +441,22 @@ func run_apex_logic() -> void:
 			continue
 
 		var my_rect = Rect2i(a.pos.x, a.pos.y, a.size, a.size)
-		var eaten = false
 		for i in range(predators.size() - 1, -1, -1):
 			var p_rect = Rect2i(predators[i].pos.x, predators[i].pos.y, predators[i].size, predators[i].size)
 			if my_rect.intersects(p_rect):
 				predators.remove_at(i)
-				a.eating = APEX_EAT_TURNS
+				a.stomach += 1
 				a.hunger = 0
-				eaten = true
+				var needed_food = a.size
+				while a.stomach >= needed_food:
+					a.stomach -= needed_food
+					if a.size < 5:
+						a.size += 1
+						needed_food = a.size
+					else:
+						_try_spawn_offspring(a.pos, alive, a.size)
 				break
 
-		if eaten:
-			alive.append(a)
-			continue
 
 		var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, a.size + APEX_SCAN_RANGE * 2, a.size + APEX_SCAN_RANGE * 2)
 		var best_p = null
