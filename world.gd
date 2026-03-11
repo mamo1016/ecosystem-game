@@ -346,6 +346,22 @@ func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 		return Vector2i(-1, -1)
 	return found.pick_random()
 
+func _eat_all_plants_in_rect(rect: Rect2i) -> int:
+	var start_x = max(0, rect.position.x)
+	var start_y = max(0, rect.position.y)
+	var end_x = min(MAP_WIDTH, rect.position.x + rect.size.x)
+	var end_y = min(MAP_HEIGHT, rect.position.y + rect.size.y)
+	
+	var eaten_count = 0
+	for x in range(start_x, end_x):
+		for y in range(start_y, end_y):
+			var pos = Vector2i(x, y)
+			if _is_plant(grid[x][y]):
+				_erase_plant_data(pos)
+				set_tile(pos, EMPTY)
+				eaten_count += 1
+	return eaten_count
+
 func _try_move(animal: Dictionary, dir: Vector2i) -> bool:
 	var new_pos = animal.pos + dir
 	if new_pos.x < 0 or new_pos.y < 0 or new_pos.x + ANIMAL_SIZE > MAP_WIDTH or new_pos.y + ANIMAL_SIZE > MAP_HEIGHT:
@@ -369,23 +385,20 @@ func run_predator_logic() -> void:
 			p.eating -= 1
 			if p.eating <= 0:
 				p.stomach += 1
-				if p.stomach >= PLANTS_TO_REPRODUCE:
-					p.stomach = 0
+				while p.stomach >= PLANTS_TO_REPRODUCE:
+					p.stomach -= PLANTS_TO_REPRODUCE
 					p.hunger = 0
 					_try_spawn_offspring(p.pos, alive)
-				else:
-					p.hunger = 0
+				p.hunger = 0
 			alive.append(p)
 			continue
 
 		if p.hunger >= STARVATION_LIMIT: continue
 
-		var found_plant = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE))
-		if found_plant != Vector2i(-1, -1):
-			var t = get_tile(found_plant)
-			_erase_plant_data(found_plant)
-			set_tile(found_plant, EMPTY)
-			p.eating = MATURE_EAT_TURNS if t == MATURE else EAT_TURNS
+		var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE))
+		if eaten_count > 0:
+			p.eating = EAT_TURNS
+			p.stomach += eaten_count - 1
 			p.hunger = 0
 			alive.append(p)
 			continue
