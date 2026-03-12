@@ -605,8 +605,8 @@ func run_predator_logic() -> void:
 
 			# Poop: when full and reached poop target
 			if p.is_full and p.poop_target != Vector2i(-1, -1):
-				var pt: int = get_tile(p.poop_target)
-				if pt != EMPTY and pt != GRASS:
+				var poop_tile: int = get_tile(p.poop_target)
+				if poop_tile != EMPTY and poop_tile != GRASS:
 					p.poop_target = _find_poop_target(p.pos)
 				elif p.pos == p.poop_target or (abs(p.pos.x - p.poop_target.x) <= 1 and abs(p.pos.y - p.poop_target.y) <= 1):
 					set_tile(p.poop_target, DUNG)
@@ -752,6 +752,7 @@ func run_apex_logic() -> void:
 			# Eat when cooldown done
 			if a.eat_cd == 0:
 				for j in range(predators.size() - 1, -1, -1):
+					if j >= predators.size(): continue
 					var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
 					if my_rect.intersects(p_rect):
 						predators.remove_at(j)
