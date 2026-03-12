@@ -107,6 +107,17 @@ var plant_ages: Dictionary = {}
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
+class Animal:
+	var pos:     Vector2i = Vector2i.ZERO
+	var stomach: int      = 0
+	var hunger:  int      = 0
+	var age:     int      = 0
+	var scan_cd: int      = 0
+	var target:  Vector2i = Vector2i(-1, -1)
+	var facing:  Vector2i = Vector2i.ZERO
+	var size:    int      = 3
+	var home:    Vector2i = Vector2i(-1, -1)
+
 var predator_texture: Texture2D
 var apex_texture: Texture2D
 var plant_texture: Texture2D
@@ -175,14 +186,21 @@ func _debug_spawn_predator() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3 })
+	var _a := Animal.new()
+	_a.pos = pos
+	_a.facing = DIRS.pick_random()
+	predators.append(_a)
 	queue_redraw()
 
 func _debug_spawn_apex() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3, "home": pos })
+	var _a := Animal.new()
+	_a.pos = pos
+	_a.facing = DIRS.pick_random()
+	_a.home = pos
+	apexes.append(_a)
 	queue_redraw()
 
 func _draw() -> void:
@@ -247,7 +265,7 @@ func _draw() -> void:
 	draw_rect(Rect2(gx, gy, gs, gs), Color(0.7, 0.2, 0.9, 0.25))
 	draw_rect(Rect2(gx, gy, gs, gs), Color(0.8, 0.3, 1.0), false, 2.0)
 
-func _draw_animal(animal: Dictionary, color: Color, texture: Texture2D, starvation_limit: int) -> void:
+func _draw_animal(animal: Animal, color: Color, texture: Texture2D, starvation_limit: int) -> void:
 	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + animal.size > MAP_WIDTH or animal.pos.y + animal.size > MAP_HEIGHT:
 		return
 	var px: float = MAP_OFFSET.x + animal.pos.x * TILE_SIZE
@@ -402,7 +420,11 @@ func plant_seed(tile_id: int) -> void:
 		var pos = center
 		pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 		pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3, "home": pos })
+		var _a := Animal.new()
+		_a.pos = pos
+		_a.facing = DIRS.pick_random()
+		_a.home = pos
+		apexes.append(_a)
 		available_seeds -= cost
 	elif tile_id == GRASS:
 		if not _in_plant_zone(center): return
@@ -469,11 +491,18 @@ func _random_edge_pos() -> Vector2i:
 		_: return Vector2i(MAP_WIDTH - 1, randi_range(0, MAP_HEIGHT - 1))
 
 func spawn_red_invader() -> void:
-	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3 })
+	var _a := Animal.new()
+	_a.pos = _random_edge_pos()
+	_a.facing = DIRS.pick_random()
+	predators.append(_a)
 
 func spawn_apex_invader() -> void:
 	var apex_pos := _random_edge_pos()
-	apexes.append({ "pos": apex_pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3, "home": apex_pos })
+	var _a := Animal.new()
+	_a.pos = apex_pos
+	_a.facing = DIRS.pick_random()
+	_a.home = apex_pos
+	apexes.append(_a)
 
 func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var start_x = max(0, rect.position.x)
@@ -507,7 +536,7 @@ func _eat_all_plants_in_rect(rect: Rect2i) -> int:
 				eaten_count += 1
 	return eaten_count
 
-func _try_move(animal: Dictionary, dir: Vector2i) -> bool:
+func _try_move(animal: Animal, dir: Vector2i) -> bool:
 	var new_pos = animal.pos + dir
 	if new_pos.x < 0 or new_pos.y < 0 or new_pos.x + animal.size > MAP_WIDTH or new_pos.y + animal.size > MAP_HEIGHT:
 		return false
@@ -520,10 +549,12 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int, h
 	for d in dirs:
 		var new_pos = parent_pos + d * parent_size
 		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 15 <= MAP_WIDTH and new_pos.y + 15 <= MAP_HEIGHT:
-			var entry = { "pos": new_pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": d, "size": 3 }
+			var _a := Animal.new()
+			_a.pos = new_pos
+			_a.facing = d
 			if home != Vector2i(-1, -1):
-				entry["home"] = new_pos  # offspring claims spawn point as its own territory
-			list.append(entry)
+				_a.home = new_pos  # offspring claims spawn point as its own territory
+			list.append(_a)
 			return
 func run_predator_logic() -> void:
 	var alive = []
@@ -598,7 +629,7 @@ func run_predator_logic() -> void:
 
 			if not moved and p.target != Vector2i(-1, -1):
 				if _is_plant(get_tile(p.target)):
-					var diff: Vector2i = (p.target as Vector2i) - (p.pos as Vector2i)
+					var diff: Vector2i = p.target - p.pos
 					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
 					if _try_move(p, step):
 						p.facing = step
@@ -685,7 +716,7 @@ func run_apex_logic() -> void:
 
 			if not moved:
 				# Return to territory when no prey visible and outside 30x30 home zone
-				if best_p == null and a.has('home'):
+				if best_p == null and a.home != Vector2i(-1, -1):
 					var territory = Rect2i(a.home.x - 15, a.home.y - 15, 30, 30)
 					if not territory.has_point(a.pos):
 						var home_center = a.home + Vector2i(15, 15)
