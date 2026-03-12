@@ -369,6 +369,9 @@ func _in_plant_zone(pos: Vector2i) -> bool:
 func _in_goal_zone(pos: Vector2i) -> bool:
 	return pos.x >= goal_x and pos.x < goal_x + GOAL_SIZE and pos.y >= goal_y and pos.y < goal_y + GOAL_SIZE
 
+func _in_river(pos: Vector2i) -> bool:
+	return pos.x >= river_x and pos.x < river_x + RIVER_WIDTH
+
 func _count_goal_plants() -> int:
 	var count = 0
 	for x in range(goal_x, goal_x + GOAL_SIZE):
@@ -464,7 +467,7 @@ func run_plant_logic() -> void:
 	for pos in mature_arr:
 		for d in DIRS:
 			var neighbor: Vector2i = pos + d
-			if get_tile(neighbor) == EMPTY and randf() < 0.05:
+			if get_tile(neighbor) == EMPTY and randf() < 0.05 and not _in_river(neighbor):
 				set_tile(neighbor, GRASS)
 				plant_growth[neighbor] = 0
 
@@ -478,7 +481,7 @@ func _spread_from_super(parent: Vector2i) -> void:
 	var jump := Vector2i(randi_range(-8, 8), randi_range(-8, 8))
 	if jump == Vector2i.ZERO: return
 	var new_pos: Vector2i = parent + jump
-	if get_tile(new_pos) != EMPTY: return
+	if get_tile(new_pos) != EMPTY or _in_river(new_pos): return
 	set_tile(new_pos, GRASS)
 	plant_growth[new_pos] = 0
 
