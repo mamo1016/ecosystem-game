@@ -13,7 +13,7 @@ const SEED_APEX= 4
 const MATURE   = 5
 
 # --- COLOURS ---
-const COLOR_EMPTY    = Color(0.20, 0.14, 0.08)
+const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
 const COLOR_GRASS    = Color(0.25, 0.78, 0.18)
 const COLOR_PREDATOR = Color(0.90, 0.10, 0.10)
 const COLOR_SUPER    = Color(1.00, 0.88, 0.00)
@@ -129,7 +129,7 @@ func _debug_spawn_apex() -> void:
 
 func _draw() -> void:
 	# Draw the "playground" background
-	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.2, 0.2, 0.2)) # Dark gray background
+	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.62, 0.48, 0.28)) # Desert background
 	
 	var sub_w: float = float(TILE_SIZE) / 10.0
 
