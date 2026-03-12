@@ -55,18 +55,21 @@ const COST_GRASS      = 3
 const COST_SUPER      = 10
 const COST_APEX_SPAWN = 30
 
+# --- ANIMAL SIZE ---
+const ANIMAL_SIZE    = 3
+
 # --- RED PREDATOR SETTINGS ---
-const PLANTS_TO_REPRODUCE = 6
-const BIRTH_SUCCESS_CHANCE = 0.6  # 60% chance to successfully give birth
-const FULL_DURATION  = 300   # ticks after eating before becoming starving
-const STARVE_LIMIT   = 150   # ticks while starving before dying
-const HERBIVORE_LIFESPAN  = 1000  # ticks before natural death
+const BIRTH_SUCCESS_CHANCE  = 0.6
+const HERB_FOOD_TO_BREED    = 10   # stomach units needed to reproduce
+const FULL_DURATION         = 300
+const STARVE_LIMIT          = 150
+const HERBIVORE_LIFESPAN    = 1000
 
 # --- APEX PREDATOR SETTINGS ---
-const APEX_REPRODUCE     = 3
-const APEX_FULL_DURATION = 500
-const APEX_STARVE_LIMIT  = 200
-const APEX_LIFESPAN   = 2000  # ticks before natural death
+const APEX_FOOD_TO_BREED    = 3
+const APEX_FULL_DURATION    = 500
+const APEX_STARVE_LIMIT     = 200
+const APEX_LIFESPAN         = 2000
 
 # --- VISION ---
 const VISION_RANGE    = 12
@@ -116,7 +119,6 @@ class Animal:
 	var scan_cd:    int      = 0
 	var target:     Vector2i = Vector2i(-1, -1)
 	var facing:     Vector2i = Vector2i.ZERO
-	var size:       int      = 3
 	var home:       Vector2i = Vector2i(-1, -1)
 
 var predator_texture: Texture2D
@@ -267,12 +269,12 @@ func _draw() -> void:
 	draw_rect(Rect2(gx, gy, gs, gs), Color(0.8, 0.3, 1.0), false, 2.0)
 
 func _draw_animal(animal: Animal, color: Color, texture: Texture2D) -> void:
-	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + animal.size > MAP_WIDTH or animal.pos.y + animal.size > MAP_HEIGHT:
+	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + ANIMAL_SIZE > MAP_WIDTH or animal.pos.y + ANIMAL_SIZE > MAP_HEIGHT:
 		return
 	var px: float = MAP_OFFSET.x + animal.pos.x * TILE_SIZE
 	var py: float = MAP_OFFSET.y + animal.pos.y * TILE_SIZE
-	var w: float = animal.size * TILE_SIZE
-	var h: float = animal.size * TILE_SIZE
+	var w: float = ANIMAL_SIZE * TILE_SIZE
+	var h: float = ANIMAL_SIZE * TILE_SIZE
 	if texture:
 		var fw: float = texture.get_width()  / 4.0
 		var fh: float = texture.get_height() / 4.0
@@ -533,17 +535,17 @@ func _eat_all_plants_in_rect(rect: Rect2i) -> int:
 
 func _try_move(animal: Animal, dir: Vector2i) -> bool:
 	var new_pos = animal.pos + dir
-	if new_pos.x < 0 or new_pos.y < 0 or new_pos.x + animal.size > MAP_WIDTH or new_pos.y + animal.size > MAP_HEIGHT:
+	if new_pos.x < 0 or new_pos.y < 0 or new_pos.x + ANIMAL_SIZE > MAP_WIDTH or new_pos.y + ANIMAL_SIZE > MAP_HEIGHT:
 		return false
 	animal.pos = new_pos
 	return true
 
-func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int, home: Vector2i = Vector2i(-1, -1)) -> void:
+func _try_spawn_offspring(parent_pos: Vector2i, list: Array, home: Vector2i = Vector2i(-1, -1)) -> void:
 	var dirs = DIRS.duplicate()
 	dirs.shuffle()
 	for d in dirs:
-		var new_pos = parent_pos + d * parent_size
-		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 15 <= MAP_WIDTH and new_pos.y + 15 <= MAP_HEIGHT:
+		var new_pos = parent_pos + d * ANIMAL_SIZE
+		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + ANIMAL_SIZE <= MAP_WIDTH and new_pos.y + ANIMAL_SIZE <= MAP_HEIGHT:
 			var _a := Animal.new()
 			_a.pos = new_pos
 			_a.facing = d
@@ -558,29 +560,24 @@ func run_predator_logic() -> void:
 
 		for i in range(1):
 			# Instantly eat all plant tiles under body
-			var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
+			var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE))
 			if plant_pos != Vector2i(-1, -1):
 				_erase_plant_data(plant_pos)
 				set_tile(plant_pos, EMPTY)
 				p.stomach += 1
 				p.is_full = true
 				p.full_timer = 0
-				var needed_food = p.size * 10
-				while p.stomach >= needed_food:
-					p.stomach -= needed_food
-					if p.size < 5:
-						p.size += 1
-						needed_food = p.size * 10
+				while p.stomach >= HERB_FOOD_TO_BREED:
+					p.stomach -= HERB_FOOD_TO_BREED
+					if randf() < BIRTH_SUCCESS_CHANCE:
+						_try_spawn_offspring(p.pos, alive)
 					else:
-						if randf() < BIRTH_SUCCESS_CHANCE:
-							_try_spawn_offspring(p.pos, alive, p.size)
-						else:
-							p.stomach = 0  # failed birth, reset counter
+						p.stomach = 0
 
 			# Poop in goal zone if carrying food
 			if _in_goal_zone(p.pos) and p.stomach > 0:
 				p.stomach -= 1
-				var poop := Vector2i(p.pos.x + randi_range(0, p.size - 1), p.pos.y + randi_range(0, p.size - 1))
+				var poop := Vector2i(p.pos.x + randi_range(0, ANIMAL_SIZE - 1), p.pos.y + randi_range(0, ANIMAL_SIZE - 1))
 				if get_tile(poop) == EMPTY:
 					set_tile(poop, MATURE)
 
@@ -667,29 +664,24 @@ func run_apex_logic() -> void:
 
 		# 4x movement loop
 		for i in range(1):
-			var my_rect = Rect2i(a.pos.x, a.pos.y, a.size, a.size)
+			var my_rect = Rect2i(a.pos.x, a.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
 			for j in range(predators.size() - 1, -1, -1):
-				var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, predators[j].size, predators[j].size)
+				var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
 				if my_rect.intersects(p_rect):
 					predators.remove_at(j)
 					a.stomach += 1
 					a.is_full = true
 					a.full_timer = 0
-					var needed_food = a.size
-					while a.stomach >= needed_food:
-						a.stomach -= needed_food
-						if a.size < 5:
-							a.size += 1
-							needed_food = a.size
-						else:
-							_try_spawn_offspring(a.pos, alive, a.size, a.home)
+					while a.stomach >= APEX_FOOD_TO_BREED:
+						a.stomach -= APEX_FOOD_TO_BREED
+						_try_spawn_offspring(a.pos, alive, a.home)
 					break
 
-			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, a.size + APEX_SCAN_RANGE * 2, a.size + APEX_SCAN_RANGE * 2)
+			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
 			var best_p = null
 			var best_dist = 9999
 			for p in predators:
-				var p_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
+				var p_rect = Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
 				if view_rect.intersects(p_rect):
 					var dist = abs(p.pos.x - a.pos.x) + abs(p.pos.y - a.pos.y)
 					if dist < best_dist:
