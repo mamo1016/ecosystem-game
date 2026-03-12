@@ -1,4 +1,4 @@
-﻿extends Node2D
+extends Node2D
 
 # --- UI REFERENCES ---
 @onready var seed_label     = $CanvasLayer/SeedLabel
@@ -11,6 +11,7 @@ const GRASS    = 1
 const SUPER    = 3
 const SEED_APEX= 4
 const MATURE   = 5
+const DUNG     = 6
 
 # --- COLOURS ---
 const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
@@ -27,6 +28,7 @@ const COLOR_PREDATOR = Color(0.90, 0.10, 0.10)
 const COLOR_SUPER    = Color(1.00, 0.88, 0.00)
 const COLOR_APEX     = Color(0.15, 0.35, 0.95)
 const COLOR_MATURE   = Color(0.04, 0.50, 0.12)
+const COLOR_DUNG     = Color(0.45, 0.28, 0.10)
 const COLOR_MATURE_VARIANTS = [
 	Color(0.04, 0.50, 0.12),  # dark green
 	Color(0.12, 0.68, 0.22),  # medium green
@@ -58,17 +60,18 @@ const COST_APEX_SPAWN = 30
 # --- ANIMAL SIZE ---
 const ANIMAL_SIZE    = 3
 
-# --- RED PREDATOR SETTINGS ---
+# --- hervibor SETTINGS ---
 const BIRTH_SUCCESS_CHANCE  = 0.25
 const HERB_STOMACH_CAP      = 30   # plants to eat before full
 const HERB_FOOD_TO_BREED    = 200  # lifetime plants eaten to reproduce (unused now, kept for ref)
 const FULL_DURATION         = 300
-const STARVE_LIMIT          = 50
+const STARVE_LIMIT          = 200
 const HERBIVORE_LIFESPAN    = 1000
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
-const POOP_MIN_DIST         = 50   # minimum distance from current pos to poop spot
+const POOP_MIN_DIST         = 20   # minimum distance from current pos to poop spot
+const DUNG_RIPEN_TICKS      = 200  # 20 seconds at 10 ticks/sec before dung becomes a plant
 const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 200
 const APEX_LIFESPAN         = 2000
@@ -112,6 +115,7 @@ var game_active: bool    = true
 var predators: Array = []
 var apexes: Array = []
 var plant_ages: Dictionary = {}
+var dung_ages:  Dictionary = {}
 var mature_set: Dictionary = {}   # Vector2i -> true, for all MATURE tiles
 var spread_cursor: int = 0
 
@@ -297,6 +301,7 @@ func _tile_pixel_color(x: int, y: int, tile_id: int) -> Color:
 	match tile_id:
 		MATURE: return COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
 		SUPER:  return COLOR_SUPER
+		DUNG:   return COLOR_DUNG
 		_:
 			var hash_idx: int = (x * 7 + y * 11 + (x ^ y) * 3) % 6
 			if x < zone_x0 or x >= zone_x1 or y < zone_y0 or y >= zone_y1:
@@ -316,6 +321,7 @@ func _tile_colour(id: int) -> Color:
 		GRASS:  return COLOR_GRASS
 		SUPER:  return COLOR_SUPER
 		MATURE: return COLOR_MATURE
+		DUNG:   return COLOR_DUNG
 		_:      return COLOR_EMPTY
 
 func _init_grid() -> void:
@@ -450,6 +456,16 @@ func plant_seed(tile_id: int) -> void:
 
 
 func run_plant_logic() -> void:
+	# Ripen dung into plants
+	for pos in dung_ages.keys().duplicate():
+		if get_tile(pos) != DUNG:
+			dung_ages.erase(pos)
+			continue
+		dung_ages[pos] += 1
+		if dung_ages[pos] >= DUNG_RIPEN_TICKS:
+			set_tile(pos, MATURE)
+			dung_ages.erase(pos)
+
 	for pos in plant_ages.keys().duplicate():
 		if get_tile(pos) != SUPER:
 			plant_ages.erase(pos)
@@ -581,7 +597,8 @@ func run_predator_logic() -> void:
 				if get_tile(p.poop_target) != EMPTY:
 					p.poop_target = _find_poop_target(p.pos)
 				elif p.pos == p.poop_target or (abs(p.pos.x - p.poop_target.x) <= 1 and abs(p.pos.y - p.poop_target.y) <= 1):
-					set_tile(p.poop_target, MATURE)
+					set_tile(p.poop_target, DUNG)
+					dung_ages[p.poop_target] = 0
 					if randf() < BIRTH_SUCCESS_CHANCE:
 						_try_spawn_offspring(p.pos, alive)
 					p.stomach = 0
@@ -834,6 +851,7 @@ func _on_restart_button_pressed() -> void:
 	predators.clear()
 	apexes.clear()
 	plant_ages.clear()
+	dung_ages.clear()
 	mature_set.clear()
 	spread_cursor = 0
 	_init_grid()
