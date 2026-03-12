@@ -67,8 +67,8 @@ const APEX_STARVATION = 360
 const APEX_EAT_TURNS  = 3
 
 # --- VISION ---
-const VISION_RANGE    = 2
-const APEX_SCAN_RANGE = 20
+const VISION_RANGE    = 30
+const APEX_SCAN_RANGE = 30
 
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN   = 80
