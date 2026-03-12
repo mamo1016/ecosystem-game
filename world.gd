@@ -565,7 +565,7 @@ func run_predator_logic() -> void:
 					set_tile(plant_pos, EMPTY)
 					p.stomach += 1
 					p.hunger = 0
-					p.eating = 3
+					p.eating = 2
 					var needed_food = p.size * 10
 					while p.stomach >= needed_food:
 						p.stomach -= needed_food
@@ -583,7 +583,7 @@ func run_predator_logic() -> void:
 					set_tile(poop, GRASS)
 					plant_growth[poop] = 0
 
-			var moved = false
+			var moved = p.eating > 0  # stay still while eating
 			if not moved:
 				# Scan all directions within VISION_RANGE for nearest plant
 				var scan_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y - VISION_RANGE, p.size + VISION_RANGE * 2, p.size + VISION_RANGE * 2)
