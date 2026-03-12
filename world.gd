@@ -842,6 +842,10 @@ func run_apex_logic() -> void:
 							moved = true
 							break
 
+			# 40% bonus move step (makes hunters ~40% faster)
+			if randf() < 0.4 and a.eat_cd == 0 and a.rest_timer == 0:
+				_try_move(a, a.facing)
+
 			a.starve_timer += 1
 			a.thirst += 1
 			if a.starve_timer >= APEX_STARVE_LIMIT: break
