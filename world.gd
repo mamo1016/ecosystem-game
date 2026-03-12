@@ -723,8 +723,12 @@ func run_predator_logic() -> void:
 			if not p.is_full:
 				p.starve_timer += 1
 			p.thirst += 1
-			if p.starve_timer >= STARVE_LIMIT: break
-			if p.thirst >= THIRST_LIMIT: break
+			if p.starve_timer >= STARVE_LIMIT:
+				print("Herbivore despawn: STARVATION at ", p.pos)
+				break
+			if p.thirst >= THIRST_LIMIT:
+				print("Herbivore despawn: THIRST at ", p.pos)
+				break
 
 		if p.starve_timer < STARVE_LIMIT and p.thirst < THIRST_LIMIT:
 			alive.append(p)
