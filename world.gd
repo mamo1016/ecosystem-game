@@ -61,7 +61,7 @@ const COST_APEX_SPAWN = 30
 const ANIMAL_SIZE    = 5
 
 # --- hervibor SETTINGS ---
-const BIRTH_SUCCESS_CHANCE  = 0.05  # 5% give birth instantly when full; 95% go poop
+const BIRTH_SUCCESS_CHANCE  = 0.30  # 5% give birth instantly when full; 95% go poop
 const HERB_STOMACH_CAP      = 60   # plants to eat before full
 const HERB_FOOD_TO_BREED    = 200  # lifetime plants eaten to reproduce (unused now, kept for ref)
 const FULL_DURATION         = 300
@@ -69,17 +69,17 @@ const STARVE_LIMIT          = 1000
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
-const POOP_MIN_DIST         = 10   # minimum distance from current pos to poop spot
+const POOP_MIN_DIST         = 5   # minimum distance from current pos to poop spot
 const DUNG_RIPEN_TICKS      = 200  # 20 seconds at 10 ticks/sec before dung becomes a plant
 const APEX_FULL_DURATION    = 500
-const APEX_STARVE_LIMIT     = 200
+const APEX_STARVE_LIMIT     = 2400
 
-const THIRST_DANGER = 600  # ticks before seeking water (~60s)
-const THIRST_LIMIT  = 1200  # ticks before dying of thirst (~80s)
+const THIRST_DANGER = 300  # ticks before seeking water (30s)
+const THIRST_LIMIT  = 600  # ticks before dying of thirst (60s)
 
 # --- VISION ---
 const VISION_RANGE    = 30
-const APEX_SCAN_RANGE = 10
+const APEX_SCAN_RANGE = 20
 const SCAN_INTERVAL   = 100   # re-scan for target every N ticks
 const MAX_HERBIVORES  = 100  # population cap
 const MAX_APEXES      = 20
@@ -709,9 +709,11 @@ func run_predator_logic() -> void:
 				p.is_full = false
 			if not p.is_full:
 				p.starve_timer += 1
+			p.thirst += 1
 			if p.starve_timer >= STARVE_LIMIT: break
+			if p.thirst >= THIRST_LIMIT: break
 
-		if p.starve_timer < STARVE_LIMIT:
+		if p.starve_timer < STARVE_LIMIT and p.thirst < THIRST_LIMIT:
 			alive.append(p)
 	predators = alive
 func run_apex_logic() -> void:
@@ -822,9 +824,11 @@ func run_apex_logic() -> void:
 				a.is_full = false
 			if not a.is_full:
 				a.starve_timer += 1
+			a.thirst += 1
 			if a.starve_timer >= APEX_STARVE_LIMIT: break
+			if a.thirst >= THIRST_LIMIT: break
 
-		if a.starve_timer < APEX_STARVE_LIMIT:
+		if a.starve_timer < APEX_STARVE_LIMIT and a.thirst < THIRST_LIMIT:
 			alive.append(a)
 	apexes = alive
 
