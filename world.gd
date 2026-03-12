@@ -61,11 +61,13 @@ const BIRTH_SUCCESS_CHANCE = 0.6  # 60% chance to successfully give birth
 const STARVATION_LIMIT    = 150
 const EAT_TURNS           = 3
 const MATURE_EAT_TURNS    = 4
+const HERBIVORE_LIFESPAN  = 1000  # ticks before natural death
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_REPRODUCE  = 3
 const APEX_STARVATION = 360
 const APEX_EAT_TURNS  = 3
+const APEX_LIFESPAN   = 2000  # ticks before natural death
 
 # --- VISION ---
 const VISION_RANGE    = 30
@@ -170,14 +172,14 @@ func _debug_spawn_predator() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3 })
+	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3 })
 	queue_redraw()
 
 func _debug_spawn_apex() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
+	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
 	queue_redraw()
 
 func _draw() -> void:
@@ -417,7 +419,7 @@ func plant_seed(tile_id: int) -> void:
 		var pos = center
 		pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 		pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
+		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
 		available_seeds -= cost
 	elif tile_id == GRASS:
 		if not _in_plant_zone(center): return
@@ -498,11 +500,11 @@ func _random_edge_pos() -> Vector2i:
 		_: return Vector2i(MAP_WIDTH - 1, randi_range(0, MAP_HEIGHT - 1))
 
 func spawn_red_invader() -> void:
-	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3 })
+	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3 })
 
 func spawn_apex_invader() -> void:
 	var apex_pos := _random_edge_pos()
-	apexes.append({ "pos": apex_pos, "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3, "home": apex_pos })
+	apexes.append({ "pos": apex_pos, "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3, "home": apex_pos })
 
 func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var start_x = max(0, rect.position.x)
@@ -549,7 +551,7 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int, h
 	for d in dirs:
 		var new_pos = parent_pos + d * parent_size
 		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 15 <= MAP_WIDTH and new_pos.y + 15 <= MAP_HEIGHT:
-			var entry = { "pos": new_pos, "stomach": 0, "hunger": 0, "facing": d, "size": 3 }
+			var entry = { "pos": new_pos, "stomach": 0, "hunger": 0, "age": 0, "facing": d, "size": 3 }
 			if home != Vector2i(-1, -1):
 				entry["home"] = new_pos  # offspring claims spawn point as its own territory
 			list.append(entry)
@@ -647,9 +649,10 @@ func run_predator_logic() -> void:
 							break
 			
 			p.hunger += 1
-			if p.hunger >= STARVATION_LIMIT: break
+			p.age += 1
+			if p.hunger >= STARVATION_LIMIT or p.age >= HERBIVORE_LIFESPAN: break
 
-		if p.hunger < STARVATION_LIMIT:
+		if p.hunger < STARVATION_LIMIT and p.age < HERBIVORE_LIFESPAN:
 			alive.append(p)
 	predators = alive
 func run_apex_logic() -> void:
@@ -730,9 +733,10 @@ func run_apex_logic() -> void:
 								break
 
 			a.hunger += 1
-			if a.hunger >= APEX_STARVATION: break
+			a.age += 1
+			if a.hunger >= APEX_STARVATION or a.age >= APEX_LIFESPAN: break
 
-		if a.hunger < APEX_STARVATION:
+		if a.hunger < APEX_STARVATION and a.age < APEX_LIFESPAN:
 			alive.append(a)
 	apexes = alive
 
