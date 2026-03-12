@@ -68,6 +68,7 @@ const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
+var plant_texture: Texture2D
 
 func _ready() -> void:
 	# Calculate map dimension based on the ACTUAL window size, not the whole monitor
@@ -89,6 +90,7 @@ func _ready() -> void:
 	update_ui()
 	predator_texture = load("res://predator_spritesheet.png")
 	apex_texture     = load("res://apex_spritesheet.png")
+	plant_texture    = load("res://plant_spritesheet.png")
 
 func _process(delta: float) -> void:
 	if not game_active: return
@@ -149,7 +151,18 @@ func _draw() -> void:
 						Vector2i(0, -1): draw_rect(Rect2(px, py + c * sub_w, TILE_SIZE, sub_w), COLOR_GRASS)
 						_:               draw_rect(Rect2(px, py + (9 - c) * sub_w, TILE_SIZE, sub_w), COLOR_GRASS)
 			elif tile_id != EMPTY:
-				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), _tile_colour(tile_id))
+				if plant_texture:
+					var fw: float = plant_texture.get_width() / 3.0
+					var fh: float = plant_texture.get_height()
+					var frame: int = 0
+					match tile_id:
+						GRASS:  frame = 0
+						MATURE: frame = 1
+						SUPER:  frame = 2
+					var region := Rect2(frame * fw, 0, fw, fh)
+					draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+				else:
+					draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), _tile_colour(tile_id))
 
 	for p in predators: _draw_animal(p, COLOR_PREDATOR, predator_texture, STARVATION_LIMIT)
 	for a in apexes:    _draw_animal(a, COLOR_APEX,     apex_texture,     APEX_STARVATION)
