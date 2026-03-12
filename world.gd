@@ -1,4 +1,4 @@
-extends Node2D
+﻿extends Node2D
 
 # --- UI REFERENCES ---
 @onready var seed_label     = $CanvasLayer/SeedLabel
@@ -176,7 +176,7 @@ func _debug_spawn_apex() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
+	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
 	queue_redraw()
 
 func _draw() -> void:
@@ -416,7 +416,7 @@ func plant_seed(tile_id: int) -> void:
 		var pos = center
 		pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 		pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
+		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
 		available_seeds -= cost
 	elif tile_id == GRASS:
 		if not _in_plant_zone(center): return
@@ -500,7 +500,8 @@ func spawn_red_invader() -> void:
 	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
 
 func spawn_apex_invader() -> void:
-	apexes.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
+	var apex_pos := _random_edge_pos()
+	apexes.append({ "pos": apex_pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3, "home": apex_pos })
 
 func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var start_x = max(0, rect.position.x)
@@ -541,13 +542,16 @@ func _try_move(animal: Dictionary, dir: Vector2i) -> bool:
 	animal.pos = new_pos
 	return true
 
-func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int) -> void:
+func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int, home: Vector2i = Vector2i(-1, -1)) -> void:
 	var dirs = DIRS.duplicate()
 	dirs.shuffle()
 	for d in dirs:
 		var new_pos = parent_pos + d * parent_size
 		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 15 <= MAP_WIDTH and new_pos.y + 15 <= MAP_HEIGHT:
-			list.append({ "pos": new_pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": d, "size": 3 })
+			var entry = { "pos": new_pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": d, "size": 3 }
+			if home != Vector2i(-1, -1):
+				entry["home"] = new_pos  # offspring claims spawn point as its own territory
+			list.append(entry)
 			return
 func run_predator_logic() -> void:
 	var alive = []
@@ -654,7 +658,7 @@ func run_apex_logic() -> void:
 							a.size += 1
 							needed_food = a.size
 						else:
-							_try_spawn_offspring(a.pos, alive, a.size)
+							_try_spawn_offspring(a.pos, alive, a.size, a.home)
 					break
 
 			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, a.size + APEX_SCAN_RANGE * 2, a.size + APEX_SCAN_RANGE * 2)
@@ -686,18 +690,29 @@ func run_apex_logic() -> void:
 					moved = true
 
 			if not moved:
-				# Try to keep current direction first
-				if _try_move(a, a.facing):
-					moved = true
-				else:
-					# Only change direction when actually blocked
-					var wander = DIRS.duplicate()
-					wander.shuffle()
-					for d in wander:
-						if _try_move(a, d):
-							a.facing = d
+				# Return to territory when no prey visible and outside 30x30 home zone
+				if best_p == null and a.has('home'):
+					var territory = Rect2i(a.home.x - 15, a.home.y - 15, 30, 30)
+					if not territory.has_point(a.pos):
+						var home_center = a.home + Vector2i(15, 15)
+						var diff = home_center - a.pos
+						var step = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
+						if _try_move(a, step):
+							a.facing = step
 							moved = true
-							break
+				if not moved:
+					# Try to keep current direction first
+					if _try_move(a, a.facing):
+						moved = true
+					else:
+						# Only change direction when actually blocked
+						var wander = DIRS.duplicate()
+						wander.shuffle()
+						for d in wander:
+							if _try_move(a, d):
+								a.facing = d
+								moved = true
+								break
 
 			a.hunger += 1
 			if a.hunger >= APEX_STARVATION: break
