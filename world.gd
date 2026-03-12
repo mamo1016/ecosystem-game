@@ -70,8 +70,11 @@ const APEX_EAT_TURNS  = 3
 const APEX_LIFESPAN   = 2000  # ticks before natural death
 
 # --- VISION ---
-const VISION_RANGE    = 30
-const APEX_SCAN_RANGE = 30
+const VISION_RANGE    = 12
+const APEX_SCAN_RANGE = 12
+const SCAN_INTERVAL   = 5   # re-scan for target every N ticks
+const MAX_HERBIVORES  = 80  # population cap
+const MAX_APEXES      = 20
 
 
 # --- PLANT SETTINGS ---
@@ -172,14 +175,14 @@ func _debug_spawn_predator() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3 })
+	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3 })
 	queue_redraw()
 
 func _debug_spawn_apex() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
+	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3, "home": pos })
 	queue_redraw()
 
 func _draw() -> void:
@@ -399,7 +402,7 @@ func plant_seed(tile_id: int) -> void:
 		var pos = center
 		pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 		pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
+		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3, "home": pos })
 		available_seeds -= cost
 	elif tile_id == GRASS:
 		if not _in_plant_zone(center): return
@@ -466,11 +469,11 @@ func _random_edge_pos() -> Vector2i:
 		_: return Vector2i(MAP_WIDTH - 1, randi_range(0, MAP_HEIGHT - 1))
 
 func spawn_red_invader() -> void:
-	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3 })
+	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3 })
 
 func spawn_apex_invader() -> void:
 	var apex_pos := _random_edge_pos()
-	apexes.append({ "pos": apex_pos, "stomach": 0, "hunger": 0, "age": 0, "facing": DIRS.pick_random(), "size": 3, "home": apex_pos })
+	apexes.append({ "pos": apex_pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": DIRS.pick_random(), "size": 3, "home": apex_pos })
 
 func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var start_x = max(0, rect.position.x)
@@ -517,7 +520,7 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int, h
 	for d in dirs:
 		var new_pos = parent_pos + d * parent_size
 		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 15 <= MAP_WIDTH and new_pos.y + 15 <= MAP_HEIGHT:
-			var entry = { "pos": new_pos, "stomach": 0, "hunger": 0, "age": 0, "facing": d, "size": 3 }
+			var entry = { "pos": new_pos, "stomach": 0, "hunger": 0, "age": 0, "scan_cd": 0, "target": Vector2i(-1,-1), "facing": d, "size": 3 }
 			if home != Vector2i(-1, -1):
 				entry["home"] = new_pos  # offspring claims spawn point as its own territory
 			list.append(entry)
@@ -525,6 +528,7 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int, h
 func run_predator_logic() -> void:
 	var alive = []
 	for p in predators:
+		if alive.size() >= MAX_HERBIVORES: break
 		if p.hunger >= STARVATION_LIMIT: continue
 
 		for i in range(1):
@@ -559,42 +563,47 @@ func run_predator_logic() -> void:
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
 			if not moved:
-				# Avoid other herbivores within 3 tiles
-				var repulse := Vector2i(0, 0)
+				# Avoid nearest herbivore within 3 tiles (early exit)
 				for other in predators:
 					if other == p: continue
 					var dx: int = p.pos.x - other.pos.x
 					var dy: int = p.pos.y - other.pos.y
 					if abs(dx) <= 3 and abs(dy) <= 3:
-						repulse += Vector2i(signi(dx), signi(dy))
-				if repulse != Vector2i(0, 0):
-					var step := Vector2i(signi(repulse.x), 0) if abs(repulse.x) >= abs(repulse.y) else Vector2i(0, signi(repulse.y))
-					if _try_move(p, step):
-						p.facing = step
-						moved = true
+						var step := Vector2i(signi(dx), 0) if abs(dx) >= abs(dy) else Vector2i(0, signi(dy))
+						if _try_move(p, step):
+							p.facing = step
+							moved = true
+						break
 
-			if not moved:
-				# Scan all directions within VISION_RANGE for nearest plant
-				var scan_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y - VISION_RANGE, p.size + VISION_RANGE * 2, p.size + VISION_RANGE * 2)
-				var best_plant = Vector2i(-1, -1)
-				var best_dist = 9999
-				var sx = max(0, scan_rect.position.x)
-				var sy = max(0, scan_rect.position.y)
-				var ex = min(MAP_WIDTH, scan_rect.position.x + scan_rect.size.x)
-				var ey = min(MAP_HEIGHT, scan_rect.position.y + scan_rect.size.y)
+			# Refresh cached plant target every SCAN_INTERVAL ticks
+			if p.scan_cd <= 0:
+				p.scan_cd = SCAN_INTERVAL
+				var best_plant := Vector2i(-1, -1)
+				var best_dist := 9999
+				var sx := max(0, p.pos.x - VISION_RANGE)
+				var sy := max(0, p.pos.y - VISION_RANGE)
+				var ex := min(MAP_WIDTH,  p.pos.x + VISION_RANGE)
+				var ey := min(MAP_HEIGHT, p.pos.y + VISION_RANGE)
 				for bx in range(sx, ex):
 					for by in range(sy, ey):
 						if _is_plant(grid[bx][by]):
-							var d = abs(bx - p.pos.x) + abs(by - p.pos.y)
+							var d := abs(bx - p.pos.x) + abs(by - p.pos.y)
 							if d < best_dist:
 								best_dist = d
 								best_plant = Vector2i(bx, by)
-				if best_plant != Vector2i(-1, -1):
-					var diff = best_plant - p.pos
+				p.target = best_plant
+			else:
+				p.scan_cd -= 1
+
+			if not moved and p.target != Vector2i(-1, -1):
+				if _is_plant(get_tile(p.target)):
+					var diff := p.target - p.pos
 					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
 					if _try_move(p, step):
 						p.facing = step
 						moved = true
+				else:
+					p.target = Vector2i(-1, -1)
 
 			if not moved:
 				# 5% chance to turn randomly
@@ -623,6 +632,7 @@ func run_predator_logic() -> void:
 func run_apex_logic() -> void:
 	var alive = []
 	for a in apexes:
+		if alive.size() >= MAX_APEXES: break
 		if a.hunger >= APEX_STARVATION: continue
 
 		# 4x movement loop
