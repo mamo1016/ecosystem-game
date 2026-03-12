@@ -581,15 +581,18 @@ func run_predator_logic() -> void:
 					if _try_move(p, p.facing): moved = true
 
 			if not moved:
-				if randf() < 0.00000001:
-					p.facing = DIRS.pick_random()
-				var wander = DIRS.duplicate()
-				wander.shuffle()
-				for d in wander:
-					if _try_move(p, d):
-						p.facing = d
-						moved = true
-						break
+				# Try to keep current direction first
+				if _try_move(p, p.facing):
+					moved = true
+				else:
+					# Only change direction when actually blocked
+					var wander = DIRS.duplicate()
+					wander.shuffle()
+					for d in wander:
+						if _try_move(p, d):
+							p.facing = d
+							moved = true
+							break
 			
 			p.hunger += 1
 			if p.hunger >= STARVATION_LIMIT: break
@@ -647,13 +650,18 @@ func run_apex_logic() -> void:
 					moved = true
 
 			if not moved:
-				var wander = DIRS.duplicate()
-				wander.shuffle()
-				for d in wander:
-					if _try_move(a, d):
-						a.facing = d
-						moved = true
-						break
+				# Try to keep current direction first
+				if _try_move(a, a.facing):
+					moved = true
+				else:
+					# Only change direction when actually blocked
+					var wander = DIRS.duplicate()
+					wander.shuffle()
+					for d in wander:
+						if _try_move(a, d):
+							a.facing = d
+							moved = true
+							break
 
 			a.hunger += 1
 			if a.hunger >= APEX_STARVATION: break
