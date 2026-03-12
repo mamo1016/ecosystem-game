@@ -103,14 +103,14 @@ func _debug_spawn_predator() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 1 })
+	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
 	queue_redraw()
 
 func _debug_spawn_apex() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 1 })
+	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
 	queue_redraw()
 
 func _draw() -> void:
@@ -284,7 +284,7 @@ func plant_seed(tile_id: int) -> void:
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
 	
 	if tile_id == SEED_APEX:
-		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 1 })
+		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
 		available_seeds -= cost
 	elif tile_id == GRASS:
 		if get_tile(pos) != EMPTY: return
@@ -350,10 +350,10 @@ func _random_edge_pos() -> Vector2i:
 		_: return Vector2i(MAP_WIDTH - 1, randi_range(0, MAP_HEIGHT - 1))
 
 func spawn_red_invader() -> void:
-	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 1 })
+	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
 
 func spawn_apex_invader() -> void:
-	apexes.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 1 })
+	apexes.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
 
 func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var start_x = max(0, rect.position.x)
@@ -399,8 +399,8 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int) -
 	dirs.shuffle()
 	for d in dirs:
 		var new_pos = parent_pos + d * parent_size
-		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 1 <= MAP_WIDTH and new_pos.y + 1 <= MAP_HEIGHT:
-			list.append({ "pos": new_pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": d, "size": 1 })
+		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 3 <= MAP_WIDTH and new_pos.y + 3 <= MAP_HEIGHT:
+			list.append({ "pos": new_pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": d, "size": 3 })
 			return
 
 func run_predator_logic() -> void:
@@ -422,8 +422,8 @@ func run_predator_logic() -> void:
 			var needed_food = p.size * 10
 			while p.stomach >= needed_food:
 				p.stomach -= needed_food
-				if p.size < 5:
-					p.size += 1
+				if p.size < 7:
+					p.size += 2
 					needed_food = p.size * 10
 				else:
 					_try_spawn_offspring(p.pos, alive, p.size)
@@ -476,8 +476,8 @@ func run_apex_logic() -> void:
 				var needed_food = a.size
 				while a.stomach >= needed_food:
 					a.stomach -= needed_food
-					if a.size < 5:
-						a.size += 1
+					if a.size < 7:
+						a.size += 2
 						needed_food = a.size
 					else:
 						_try_spawn_offspring(a.pos, alive, a.size)

@@ -1,13 +1,13 @@
 [gd_scene format=3 uid="uid://b1ecosim"]
 
-[ext_resource type="Script" path="res://world.gd" id="1_world"]
+[ext_resource type="Script" uid="uid://d2gf3hjp5bjo3" path="res://world.gd" id="1_world"]
 
-[node name="World" type="Node2D"]
+[node name="World" type="Node2D" unique_id=2011073639]
 script = ExtResource("1_world")
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1960898039]
 
-[node name="ScoreLabel" type="Label" parent="CanvasLayer"]
+[node name="ScoreLabel" type="Label" parent="CanvasLayer" unique_id=553265983]
 offset_left = 10.0
 offset_top = 8.0
 offset_right = 600.0
@@ -15,7 +15,7 @@ offset_bottom = 36.0
 theme_override_font_sizes/font_size = 20
 text = "Map Covered: 0.0%"
 
-[node name="SeedLabel" type="Label" parent="CanvasLayer"]
+[node name="SeedLabel" type="Label" parent="CanvasLayer" unique_id=529723653]
 offset_left = 10.0
 offset_top = 36.0
 offset_right = 400.0
@@ -23,7 +23,7 @@ offset_bottom = 64.0
 theme_override_font_sizes/font_size = 18
 text = "Seeds: 20"
 
-[node name="RestartButton" type="Button" parent="CanvasLayer"]
+[node name="RestartButton" type="Button" parent="CanvasLayer" unique_id=1745034757]
 visible = false
 offset_left = 400.0
 offset_top = 330.0
@@ -32,25 +32,28 @@ offset_bottom = 380.0
 theme_override_font_sizes/font_size = 22
 text = "Restart"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer" unique_id=475507667]
 offset_left = 200.0
 offset_top = 672.0
 offset_right = 900.0
 offset_bottom = 720.0
 alignment = 1
 
-[node name="BtnGrass" type="Button" parent="CanvasLayer/HBoxContainer"]
+[node name="BtnGrass" type="Button" parent="CanvasLayer/HBoxContainer" unique_id=360552475]
 custom_minimum_size = Vector2(200, 44)
+layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Grass  [Cost: 3]"
 
-[node name="BtnSuper" type="Button" parent="CanvasLayer/HBoxContainer"]
+[node name="BtnSuper" type="Button" parent="CanvasLayer/HBoxContainer" unique_id=1458722945]
 custom_minimum_size = Vector2(200, 44)
+layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Super Seed  [Cost: 10]"
 
-[node name="BtnPredator" type="Button" parent="CanvasLayer/HBoxContainer"]
+[node name="BtnPredator" type="Button" parent="CanvasLayer/HBoxContainer" unique_id=1644050629]
 custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Apex Hunter  [Cost: 30]"
 
