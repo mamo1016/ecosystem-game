@@ -242,6 +242,12 @@ func _draw() -> void:
 		Rect2(MAP_OFFSET.x + zone_x0 * TILE_SIZE, MAP_OFFSET.y + zone_y0 * TILE_SIZE,
 			  (zone_x1 - zone_x0) * TILE_SIZE, (zone_y1 - zone_y0) * TILE_SIZE),
 		Color(0.9, 0.8, 0.4, 0.5), false, 1.0)
+	# Draw goal zone (purple fill + bright border)
+	var gx := MAP_OFFSET.x + goal_x * TILE_SIZE
+	var gy := MAP_OFFSET.y + goal_y * TILE_SIZE
+	var gs := GOAL_SIZE * TILE_SIZE
+	draw_rect(Rect2(gx, gy, gs, gs), Color(0.7, 0.2, 0.9, 0.25))
+	draw_rect(Rect2(gx, gy, gs, gs), Color(0.8, 0.3, 1.0), false, 2.0)
 
 func _draw_animal(animal: Dictionary, color: Color, texture: Texture2D, starvation_limit: int) -> void:
 	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + animal.size > MAP_WIDTH or animal.pos.y + animal.size > MAP_HEIGHT:
@@ -533,7 +539,6 @@ func run_predator_logic() -> void:
 	for p in predators:
 		if p.hunger >= STARVATION_LIMIT: continue
 
-		# 4x movement loop
 		for i in range(1):
 			var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
 			if eaten_count > 0:
@@ -548,18 +553,35 @@ func run_predator_logic() -> void:
 					else:
 						_try_spawn_offspring(p.pos, alive, p.size)
 
-			var moved = false
-			var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
-			if p.facing == Vector2i(1, 0): front_rect = Rect2i(p.pos.x + p.size, p.pos.y, VISION_RANGE, p.size)
-			elif p.facing == Vector2i(-1, 0): front_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y, VISION_RANGE, p.size)
-			elif p.facing == Vector2i(0, 1): front_rect = Rect2i(p.pos.x, p.pos.y + p.size, p.size, VISION_RANGE)
-			elif p.facing == Vector2i(0, -1): front_rect = Rect2i(p.pos.x, p.pos.y - VISION_RANGE, p.size, VISION_RANGE)
+			# Poop in goal zone if carrying food
+			if _in_goal_zone(p.pos) and p.stomach > 0:
+				p.stomach -= 1
+				var poop := Vector2i(p.pos.x + randi_range(0, p.size - 1), p.pos.y + randi_range(0, p.size - 1))
+				if get_tile(poop) == EMPTY:
+					set_tile(poop, GRASS)
+					plant_growth[poop] = 0
 
-			if _find_plant_in_rect(front_rect) != Vector2i(-1, -1):
-				if _try_move(p, p.facing): moved = true
+			var moved = false
+			# If carrying food, 40% chance to head toward goal zone
+			if p.stomach > 0 and randf() < 0.4:
+				var goal_center := Vector2i(goal_x + GOAL_SIZE / 2, goal_y + GOAL_SIZE / 2)
+				var diff := goal_center - p.pos
+				var step := Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
+				if _try_move(p, step):
+					p.facing = step
+					moved = true
 
 			if not moved:
-				if randf() < 0.00001:
+				var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
+				if p.facing == Vector2i(1, 0): front_rect = Rect2i(p.pos.x + p.size, p.pos.y, VISION_RANGE, p.size)
+				elif p.facing == Vector2i(-1, 0): front_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y, VISION_RANGE, p.size)
+				elif p.facing == Vector2i(0, 1): front_rect = Rect2i(p.pos.x, p.pos.y + p.size, p.size, VISION_RANGE)
+				elif p.facing == Vector2i(0, -1): front_rect = Rect2i(p.pos.x, p.pos.y - VISION_RANGE, p.size, VISION_RANGE)
+				if _find_plant_in_rect(front_rect) != Vector2i(-1, -1):
+					if _try_move(p, p.facing): moved = true
+
+			if not moved:
+				if randf() < 0.01:
 					p.facing = DIRS.pick_random()
 				var wander = DIRS.duplicate()
 				wander.shuffle()
@@ -642,23 +664,17 @@ func run_apex_logic() -> void:
 
 func update_ui() -> void:
 	seed_label.text = "Seeds: %d / %d" % [available_seeds, SEED_CAP]
-	var has_plants = _count_life() > 0
-	var has_herbi  = predators.size() > 0
-	var has_apex   = apexes.size() > 0
-	if has_plants and has_herbi and has_apex:
-		score_label.text = "Stable: %.1fs / %.0fs" % [stability_timer, STABILITY_GOAL]
-	else:
-		var missing = []
-		if not has_plants: missing.append("plants")
-		if not has_herbi:  missing.append("herbivores")
-		if not has_apex:   missing.append("apex")
-		score_label.text = "Missing: " + ", ".join(missing)
+	var goal_plants := _count_goal_plants()
+	score_label.text = "Goal: %d / %d" % [goal_plants, GOAL_FILL_TARGET]
+	if goal_plants >= GOAL_FILL_TARGET and game_active:
+		score_label.text = "VICTORY! Goal area covered!"
+		game_active = false
+		restart_button.show()
 
 func _on_restart_button_pressed() -> void:
 	available_seeds  = 20
 	time_passed      = 0.0
 	animal_time      = 0.0
-	stability_timer  = 0.0
 	game_active      = true
 	predators.clear()
 	apexes.clear()
@@ -666,7 +682,7 @@ func _on_restart_button_pressed() -> void:
 	plant_growth.clear()
 	_init_grid()
 	update_ui()
-	score_label.text = "Missing: plants, herbivores, apex"
+	score_label.text = "Goal: 0 / %d" % GOAL_FILL_TARGET
 	restart_button.hide()
 	queue_redraw()
 
