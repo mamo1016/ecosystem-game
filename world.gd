@@ -557,8 +557,7 @@ func run_predator_logic() -> void:
 				if _try_move(p, p.facing): moved = true
 
 			if not moved:
-				# No food ahead — randomly turn before wandering so they don't drill straight
-				if randf() < 0.25:
+				if randf() < 0.01:
 					p.facing = DIRS.pick_random()
 				var wander = DIRS.duplicate()
 				wander.shuffle()
@@ -609,8 +608,7 @@ func run_apex_logic() -> void:
 						best_dist = dist
 						best_p = p
 
-			# Random turn when no prey locked — prevents straight-line wandering
-			if best_p == null and randf() < 0.20:
+			if best_p == null and randf() < 0.01:
 				a.facing = DIRS.pick_random()
 
 			var moved = false
