@@ -726,31 +726,18 @@ func run_apex_logic() -> void:
 			if a.eat_cd > 0:
 				a.eat_cd -= 1
 			var my_rect = Rect2i(a.pos.x, a.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
-			# Eat only when not full
-			if a.eat_cd == 0 and not a.is_full:
+			# Eat when cooldown done
+			if a.eat_cd == 0:
 				for j in range(predators.size() - 1, -1, -1):
 					var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
 					if my_rect.intersects(p_rect):
 						predators.remove_at(j)
 						a.stomach += 1
-						a.full_timer = 0
 						a.eat_cd = 50
-						a.is_full = true
-						a.poop_target = _find_poop_target(a.pos)
 						while a.stomach >= APEX_FOOD_TO_BREED:
 							a.stomach -= APEX_FOOD_TO_BREED
 							_try_spawn_offspring(a.pos, alive, a.home)
 						break
-
-			# Poop: when full and reached poop target
-			if a.is_full and a.poop_target != Vector2i(-1, -1):
-				if get_tile(a.poop_target) != EMPTY:
-					a.poop_target = _find_poop_target(a.pos)
-				elif a.pos == a.poop_target or (abs(a.pos.x - a.poop_target.x) <= 1 and abs(a.pos.y - a.poop_target.y) <= 1):
-					# Hunter poop — no plant, just resets
-					a.stomach = 0
-					a.is_full = false
-					a.poop_target = Vector2i(-1, -1)
 
 			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
 			var best_p = null
@@ -767,13 +754,6 @@ func run_apex_logic() -> void:
 				a.facing = DIRS.pick_random()
 
 			var moved = a.eat_cd > 0  # stay still while eating
-			# When full: move toward poop target instead of hunting
-			if not moved and a.is_full and a.poop_target != Vector2i(-1, -1):
-				var diff: Vector2i = a.poop_target - a.pos
-				var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
-				if _try_move(a, step):
-					a.facing = step
-					moved = true
 			# Drink when in river
 			if _in_river(a.pos): a.thirst = 0
 			# Seek river when thirsty (overrides prey-chasing)
@@ -787,7 +767,7 @@ func run_apex_logic() -> void:
 			# River slows movement: 60% chance to skip move when in river
 			if _in_river(a.pos) and randf() < 0.6:
 				moved = true
-			if not moved and not a.is_full and best_p != null:
+			if not moved and best_p != null:
 				var diff = best_p.pos - a.pos
 				var step = Vector2i()
 				if abs(diff.x) >= abs(diff.y): step = Vector2i(signi(diff.x), 0)
@@ -819,11 +799,7 @@ func run_apex_logic() -> void:
 							moved = true
 							break
 
-			a.full_timer += 1
-			if a.full_timer >= APEX_FULL_DURATION:
-				a.is_full = false
-			if not a.is_full:
-				a.starve_timer += 1
+			a.starve_timer += 1
 			a.thirst += 1
 			if a.starve_timer >= APEX_STARVE_LIMIT: break
 			if a.thirst >= THIRST_LIMIT: break
