@@ -79,7 +79,7 @@ const THIRST_LIMIT  = 600  # ticks before dying of thirst (60s)
 
 # --- VISION ---
 const VISION_RANGE    = 30
-const APEX_SCAN_RANGE = 5
+const APEX_SCAN_RANGE = 40
 const SCAN_INTERVAL   = 100   # re-scan for target every N ticks
 const MAX_HERBIVORES  = 100  # population cap
 const MAX_APEXES      = 20
@@ -136,6 +136,7 @@ class Animal:
 	var thirst:         int      = 0
 	var wander_target:  Vector2i = Vector2i(-1, -1)
 	var wander_cd:      int      = 0
+	var rest_timer:     int      = 0
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -751,23 +752,29 @@ func run_apex_logic() -> void:
 						predators.remove_at(j)
 						a.stomach += 1
 						a.eat_cd = 50
+						a.rest_timer = 100  # rest 10s at home after eating
 						while a.stomach >= APEX_FOOD_TO_BREED:
 							a.stomach -= APEX_FOOD_TO_BREED
 							_try_spawn_offspring(a.pos, alive, a.home)
 						break
 
-			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
+			# Tick rest timer
+			if a.rest_timer > 0:
+				a.rest_timer -= 1
 			var best_p = null
-			var best_dist = 9999
-			for p in predators:
-				var p_rect = Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
-				if view_rect.intersects(p_rect):
-					var dist = abs(p.pos.x - a.pos.x) + abs(p.pos.y - a.pos.y)
-					if dist < best_dist:
-						best_dist = dist
-						best_p = p
+			# Only scan for prey when not resting
+			if a.rest_timer == 0:
+				var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
+				var best_dist = 9999
+				for p in predators:
+					var p_rect = Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
+					if view_rect.intersects(p_rect):
+						var dist = abs(p.pos.x - a.pos.x) + abs(p.pos.y - a.pos.y)
+						if dist < best_dist:
+							best_dist = dist
+							best_p = p
 
-			if best_p == null and randf() < 0.05:
+			if best_p == null and a.rest_timer == 0 and randf() < 0.05:
 				a.facing = DIRS.pick_random()
 
 			var moved = a.eat_cd > 0  # stay still while eating
