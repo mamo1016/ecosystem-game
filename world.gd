@@ -584,6 +584,9 @@ func run_predator_logic() -> void:
 					plant_growth[poop] = 0
 
 			var moved = p.eating > 0  # stay still while eating
+			# River slows movement: 60% chance to skip move when in river
+			if not moved and _in_river(p.pos) and randf() < 0.6:
+				moved = true
 			if not moved:
 				# Scan all directions within VISION_RANGE for nearest plant
 				var scan_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y - VISION_RANGE, p.size + VISION_RANGE * 2, p.size + VISION_RANGE * 2)
@@ -669,7 +672,10 @@ func run_apex_logic() -> void:
 				a.facing = DIRS.pick_random()
 
 			var moved = false
-			if best_p != null:
+			# River slows movement: 60% chance to skip move when in river
+			if _in_river(a.pos) and randf() < 0.6:
+				moved = true
+			if not moved and best_p != null:
 				var diff = best_p.pos - a.pos
 				var step = Vector2i()
 				if abs(diff.x) >= abs(diff.y): step = Vector2i(signi(diff.x), 0)
