@@ -283,24 +283,38 @@ func plant_seed(tile_id: int) -> void:
 		SEED_APEX:  cost = COST_APEX_SPAWN
 		_:     return
 	if available_seeds < cost: return
-	
-	var pos := _mouse_to_grid()
-	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
-	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	
+
+	var center := _mouse_to_grid()
+
 	if tile_id == SEED_APEX:
+		var pos = center
+		pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
+		pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
 		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
 		available_seeds -= cost
 	elif tile_id == GRASS:
-		if get_tile(pos) != EMPTY: return
-		set_tile(pos, MATURE)
-		available_seeds -= cost
+		var placed = false
+		for dx in range(-5, 5):
+			for dy in range(-5, 5):
+				var pos = Vector2i(center.x + dx, center.y + dy)
+				if get_tile(pos) == EMPTY:
+					set_tile(pos, MATURE)
+					placed = true
+		if placed:
+			available_seeds -= cost
 	elif tile_id == SUPER:
-		if get_tile(pos) != EMPTY: return
-		set_tile(pos, SUPER)
-		available_seeds -= cost
-		plant_ages[pos] = 0
+		var placed = false
+		for dx in range(-5, 5):
+			for dy in range(-5, 5):
+				var pos = Vector2i(center.x + dx, center.y + dy)
+				if get_tile(pos) == EMPTY:
+					set_tile(pos, SUPER)
+					plant_ages[pos] = 0
+					placed = true
+		if placed:
+			available_seeds -= cost
 	update_ui()
+
 
 func run_plant_logic() -> void:
 	for pos in plant_ages.keys().duplicate():
