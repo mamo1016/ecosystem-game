@@ -55,7 +55,7 @@ const APEX_SCAN_RANGE = 20
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN   = 80
 const SEED_CAP         = 30
-const GROWTH_PER_TICK  = 2
+const GROWTH_PER_TICK  = 4
 var   update_interval  = 0.001
 
 # --- STATE ---
