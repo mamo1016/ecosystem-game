@@ -557,7 +557,7 @@ func run_predator_logic() -> void:
 				if _try_move(p, p.facing): moved = true
 
 			if not moved:
-				if randf() < 0.01:
+				if randf() < 0.0001:
 					p.facing = DIRS.pick_random()
 				var wander = DIRS.duplicate()
 				wander.shuffle()
@@ -608,7 +608,7 @@ func run_apex_logic() -> void:
 						best_dist = dist
 						best_p = p
 
-			if best_p == null and randf() < 0.01:
+			if best_p == null and randf() < 0.0001:
 				a.facing = DIRS.pick_random()
 
 			var moved = false
