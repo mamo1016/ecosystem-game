@@ -562,15 +562,6 @@ func run_predator_logic() -> void:
 					plant_growth[poop] = 0
 
 			var moved = false
-			# If carrying food, 40% chance to head toward goal zone
-			if p.stomach > 0 and randf() < 0.4:
-				var goal_center := Vector2i(goal_x + GOAL_SIZE / 2, goal_y + GOAL_SIZE / 2)
-				var diff: Vector2i = goal_center - p.pos
-				var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
-				if _try_move(p, step):
-					p.facing = step
-					moved = true
-
 			if not moved:
 				var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
 				if p.facing == Vector2i(1, 0): front_rect = Rect2i(p.pos.x + p.size, p.pos.y, VISION_RANGE, p.size)
