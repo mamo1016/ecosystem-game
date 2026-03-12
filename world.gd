@@ -166,10 +166,14 @@ func _draw() -> void:
 						MATURE: frame = 1
 						SUPER:  frame = 2
 					var region := Rect2(frame * fw, 0, fw, fh)
-					var modulate := Color.WHITE
+					var bg_color := Color.WHITE
 					if tile_id == MATURE:
-						modulate = COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
-					draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region, modulate)
+						bg_color = COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
+					elif tile_id == SUPER:
+						bg_color = COLOR_SUPER
+					# Draw solid background first so transparent sprite pixels don't show the dark bg
+					draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), bg_color)
+					draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
 				else:
 					var col := _tile_colour(tile_id)
 					if tile_id == MATURE:
