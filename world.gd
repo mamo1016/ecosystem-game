@@ -60,13 +60,15 @@ const ANIMAL_SIZE    = 3
 
 # --- RED PREDATOR SETTINGS ---
 const BIRTH_SUCCESS_CHANCE  = 0.25
-const HERB_FOOD_TO_BREED    = 30  # stomach units needed to reproduce
+const HERB_STOMACH_CAP      = 30   # plants to eat before full
+const HERB_FOOD_TO_BREED    = 200  # lifetime plants eaten to reproduce (unused now, kept for ref)
 const FULL_DURATION         = 300
 const STARVE_LIMIT          = 50
 const HERBIVORE_LIFESPAN    = 1000
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
+const POOP_MIN_DIST         = 50   # minimum distance from current pos to poop spot
 const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 200
 const APEX_LIFESPAN         = 2000
@@ -113,17 +115,18 @@ var spread_cursor: int = 0
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
 class Animal:
-	var pos:        Vector2i = Vector2i.ZERO
-	var stomach:    int      = 0
-	var is_full:    bool     = true
-	var full_timer: int      = 0   # ticks since last meal; exceeds FULL_DURATION → starving
-	var starve_timer: int    = 0   # ticks while starving; exceeds STARVE_LIMIT → dies
-	var age:        int      = 0
-	var eat_cd:     int      = 0   # eating cooldown ticks
-	var scan_cd:    int      = 0
-	var target:     Vector2i = Vector2i(-1, -1)
-	var facing:     Vector2i = Vector2i.ZERO
-	var home:       Vector2i = Vector2i(-1, -1)
+	var pos:          Vector2i = Vector2i.ZERO
+	var stomach:      int      = 0
+	var is_full:      bool     = false
+	var poop_target:  Vector2i = Vector2i(-1, -1)
+	var full_timer:   int      = 0
+	var starve_timer: int      = 0
+	var age:          int      = 0
+	var eat_cd:       int      = 0
+	var scan_cd:      int      = 0
+	var target:       Vector2i = Vector2i(-1, -1)
+	var facing:       Vector2i = Vector2i.ZERO
+	var home:         Vector2i = Vector2i(-1, -1)
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -362,6 +365,15 @@ func _in_goal_zone(pos: Vector2i) -> bool:
 func _in_river(pos: Vector2i) -> bool:
 	return pos.x >= river_x and pos.x < river_x + RIVER_WIDTH
 
+func _find_poop_target(from: Vector2i) -> Vector2i:
+	for _i in range(30):
+		var tx: int = randi_range(0, MAP_WIDTH - 1)
+		var ty: int = randi_range(0, MAP_HEIGHT - 1)
+		var t := Vector2i(tx, ty)
+		if abs(tx - from.x) + abs(ty - from.y) >= POOP_MIN_DIST and get_tile(t) == EMPTY and not _in_river(t):
+			return t
+	return Vector2i(-1, -1)
+
 func _count_goal_plants() -> int:
 	var count = 0
 	for x in range(goal_x, goal_x + GOAL_SIZE):
@@ -548,27 +560,29 @@ func run_predator_logic() -> void:
 		if alive.size() >= MAX_HERBIVORES: break
 
 		for i in range(1):
-			# Instantly eat all plant tiles under body
-			var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE))
-			if plant_pos != Vector2i(-1, -1):
-				_erase_plant_data(plant_pos)
-				set_tile(plant_pos, EMPTY)
-				p.stomach += 1
-				p.is_full = true
-				p.full_timer = 0
-				while p.stomach >= HERB_FOOD_TO_BREED:
-					p.stomach -= HERB_FOOD_TO_BREED
+			# Eat only when not full
+			if not p.is_full:
+				var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE))
+				if plant_pos != Vector2i(-1, -1):
+					_erase_plant_data(plant_pos)
+					set_tile(plant_pos, EMPTY)
+					p.stomach += 1
+					p.full_timer = 0
+					if p.stomach >= HERB_STOMACH_CAP:
+						p.is_full = true
+						p.poop_target = _find_poop_target(p.pos)
+
+			# Poop: when full and reached poop target
+			if p.is_full and p.poop_target != Vector2i(-1, -1):
+				if get_tile(p.poop_target) != EMPTY:
+					p.poop_target = _find_poop_target(p.pos)
+				elif p.pos == p.poop_target or (abs(p.pos.x - p.poop_target.x) <= 1 and abs(p.pos.y - p.poop_target.y) <= 1):
+					set_tile(p.poop_target, MATURE)
 					if randf() < BIRTH_SUCCESS_CHANCE:
 						_try_spawn_offspring(p.pos, alive)
-					else:
-						p.stomach = 0
-
-			# Poop in goal zone if carrying food
-			if _in_goal_zone(p.pos) and p.stomach > 0:
-				p.stomach -= 1
-				var poop := Vector2i(p.pos.x + randi_range(0, ANIMAL_SIZE - 1), p.pos.y + randi_range(0, ANIMAL_SIZE - 1))
-				if get_tile(poop) == EMPTY:
-					set_tile(poop, MATURE)
+					p.stomach = 0
+					p.is_full = false
+					p.poop_target = Vector2i(-1, -1)
 
 			var moved = false
 			# Herbivores are slightly slower than hunters (20% skip)
@@ -601,8 +615,17 @@ func run_predator_logic() -> void:
 							moved = true
 						break
 
-			# Refresh cached plant target every SCAN_INTERVAL ticks
-			if p.scan_cd <= 0:
+			# When full: move toward poop target instead of plants
+			if not moved and p.is_full and p.poop_target != Vector2i(-1, -1):
+				var diff: Vector2i = p.poop_target - p.pos
+				var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
+				if _try_move(p, step):
+					p.facing = step
+					moved = true
+
+			# Scan for plants only when hungry
+			if p.is_full: p.scan_cd = 0
+			if p.scan_cd <= 0 and not p.is_full:
 				p.scan_cd = SCAN_INTERVAL
 				var best_plant := Vector2i(-1, -1)
 				var best_dist := 9999
@@ -670,26 +693,31 @@ func run_apex_logic() -> void:
 			if a.eat_cd > 0:
 				a.eat_cd -= 1
 			var my_rect = Rect2i(a.pos.x, a.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
-			if a.eat_cd == 0:
+			# Eat only when not full
+			if a.eat_cd == 0 and not a.is_full:
 				for j in range(predators.size() - 1, -1, -1):
 					var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
 					if my_rect.intersects(p_rect):
 						predators.remove_at(j)
 						a.stomach += 1
-						a.is_full = true
 						a.full_timer = 0
-						a.eat_cd = 50  # 5 seconds at 10 ticks/sec
+						a.eat_cd = 50
+						a.is_full = true
+						a.poop_target = _find_poop_target(a.pos)
 						while a.stomach >= APEX_FOOD_TO_BREED:
 							a.stomach -= APEX_FOOD_TO_BREED
 							_try_spawn_offspring(a.pos, alive, a.home)
 						break
 
-			# Deposit seed in goal zone
-			if _in_goal_zone(a.pos) and a.stomach > 0:
-				a.stomach -= 1
-				var poop := Vector2i(a.pos.x + randi_range(0, ANIMAL_SIZE - 1), a.pos.y + randi_range(0, ANIMAL_SIZE - 1))
-				if get_tile(poop) == EMPTY:
-					set_tile(poop, MATURE)
+			# Poop: when full and reached poop target
+			if a.is_full and a.poop_target != Vector2i(-1, -1):
+				if get_tile(a.poop_target) != EMPTY:
+					a.poop_target = _find_poop_target(a.pos)
+				elif a.pos == a.poop_target or (abs(a.pos.x - a.poop_target.x) <= 1 and abs(a.pos.y - a.poop_target.y) <= 1):
+					# Hunter poop — no plant, just resets
+					a.stomach = 0
+					a.is_full = false
+					a.poop_target = Vector2i(-1, -1)
 
 			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
 			var best_p = null
@@ -706,10 +734,17 @@ func run_apex_logic() -> void:
 				a.facing = DIRS.pick_random()
 
 			var moved = a.eat_cd > 0  # stay still while eating
+			# When full: move toward poop target instead of hunting
+			if not moved and a.is_full and a.poop_target != Vector2i(-1, -1):
+				var diff: Vector2i = a.poop_target - a.pos
+				var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
+				if _try_move(a, step):
+					a.facing = step
+					moved = true
 			# River slows movement: 60% chance to skip move when in river
 			if _in_river(a.pos) and randf() < 0.6:
 				moved = true
-			if not moved and best_p != null:
+			if not moved and not a.is_full and best_p != null:
 				var diff = best_p.pos - a.pos
 				var step = Vector2i()
 				if abs(diff.x) >= abs(diff.y): step = Vector2i(signi(diff.x), 0)
