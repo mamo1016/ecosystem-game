@@ -14,6 +14,14 @@ const MATURE   = 5
 
 # --- COLOURS ---
 const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
+const COLOR_DESERT_VARIANTS = [
+	Color(0.85, 0.71, 0.44),  # pale sand
+	Color(0.74, 0.58, 0.32),  # mid sand
+	Color(0.68, 0.50, 0.26),  # dry ochre
+	Color(0.80, 0.65, 0.38),  # warm sand
+	Color(0.90, 0.76, 0.48),  # bright dune
+	Color(0.65, 0.48, 0.24),  # dark earth
+]
 const COLOR_GRASS    = Color(0.25, 0.78, 0.18)
 const COLOR_PREDATOR = Color(0.90, 0.10, 0.10)
 const COLOR_SUPER    = Color(1.00, 0.88, 0.00)
@@ -139,8 +147,14 @@ func _draw() -> void:
 			var py: float = MAP_OFFSET.y + y * TILE_SIZE
 			var tile_id: int = grid[x][y]
 
-			if tile_id == GRASS:
+			if tile_id == EMPTY:
+				var desert_idx = (x * 7 + y * 11 + (x ^ y) * 3) % 6
+				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), COLOR_DESERT_VARIANTS[desert_idx])
+			elif tile_id == GRASS:
 				var pos := Vector2i(x, y)
+				# Desert base under growing grass
+				var desert_idx = (x * 7 + y * 11 + (x ^ y) * 3) % 6
+				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), COLOR_DESERT_VARIANTS[desert_idx])
 				var growth_val: int = plant_growth.get(pos, 0)
 				var total_cols: int = mini(growth_val / 10, 10)
 				var primary_dir: Vector2i = Vector2i(-1, 0)
