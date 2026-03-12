@@ -698,7 +698,7 @@ func run_apex_logic() -> void:
 			if best_p == null and randf() < 0.05:
 				a.facing = DIRS.pick_random()
 
-			var moved = false
+			var moved = a.eat_cd > 0  # stay still while eating
 			# River slows movement: 60% chance to skip move when in river
 			if _in_river(a.pos) and randf() < 0.6:
 				moved = true
