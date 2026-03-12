@@ -61,8 +61,8 @@ const COST_APEX_SPAWN = 30
 const ANIMAL_SIZE    = 5
 
 # --- hervibor SETTINGS ---
-const BIRTH_SUCCESS_CHANCE  = 0.25
-const HERB_STOMACH_CAP      = 30   # plants to eat before full
+const BIRTH_SUCCESS_CHANCE  = 0.05  # 5% give birth instantly when full; 95% go poop
+const HERB_STOMACH_CAP      = 60   # plants to eat before full
 const HERB_FOOD_TO_BREED    = 200  # lifetime plants eaten to reproduce (unused now, kept for ref)
 const FULL_DURATION         = 300
 const STARVE_LIMIT          = 1000
@@ -78,8 +78,8 @@ const THIRST_DANGER = 600  # ticks before seeking water (~60s)
 const THIRST_LIMIT  = 800  # ticks before dying of thirst (~80s)
 
 # --- VISION ---
-const VISION_RANGE    = 12
-const APEX_SCAN_RANGE = 12
+const VISION_RANGE    = 30
+const APEX_SCAN_RANGE = 40
 const SCAN_INTERVAL   = 5   # re-scan for target every N ticks
 const MAX_HERBIVORES  = 100  # population cap
 const MAX_APEXES      = 20
@@ -109,7 +109,7 @@ var current_seed_id: int = GRASS
 var time_passed: float   = 0.0
 var animal_time: float   = 0.0
 var game_active: bool    = true
-var herbivore_auto_spawn: bool = true
+var herbivore_auto_spawn: bool = false
 
 var predators: Array = []
 var apexes: Array = []
@@ -588,8 +588,12 @@ func run_predator_logic() -> void:
 					p.stomach += 1
 					p.full_timer = 0
 					if p.stomach >= HERB_STOMACH_CAP:
-						p.is_full = true
-						p.poop_target = _find_poop_target(p.pos)
+						if randf() < BIRTH_SUCCESS_CHANCE:
+							_try_spawn_offspring(p.pos, alive)
+							p.stomach = 0
+						else:
+							p.is_full = true
+							p.poop_target = _find_poop_target(p.pos)
 
 			# Poop: when full and reached poop target
 			if p.is_full and p.poop_target != Vector2i(-1, -1):
@@ -598,8 +602,6 @@ func run_predator_logic() -> void:
 				elif p.pos == p.poop_target or (abs(p.pos.x - p.poop_target.x) <= 1 and abs(p.pos.y - p.poop_target.y) <= 1):
 					set_tile(p.poop_target, DUNG)
 					dung_ages[p.poop_target] = 0
-					if randf() < BIRTH_SUCCESS_CHANCE:
-						_try_spawn_offspring(p.pos, alive)
 					p.stomach = 0
 					p.is_full = false
 					p.poop_target = Vector2i(-1, -1)
