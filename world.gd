@@ -522,6 +522,10 @@ func run_predator_logic() -> void:
 					else:
 						_try_spawn_offspring(p.pos, alive, p.size)
 
+			# Random turn so animals don't walk straight for hundreds of tiles
+			if randf() < 0.20:
+				p.facing = DIRS.pick_random()
+
 			var moved = false
 			var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
 			if p.facing == Vector2i(1, 0): front_rect = Rect2i(p.pos.x + p.size, p.pos.y, VISION_RANGE, p.size)
@@ -581,6 +585,10 @@ func run_apex_logic() -> void:
 					if dist < best_dist:
 						best_dist = dist
 						best_p = p
+
+			# Random turn when no prey locked — prevents straight-line wandering
+			if best_p == null and randf() < 0.20:
+				a.facing = DIRS.pick_random()
 
 			var moved = false
 			if best_p != null:
