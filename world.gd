@@ -801,8 +801,19 @@ func run_apex_logic() -> void:
 					a.facing = step
 					moved = true
 
-			# No prey visible: return to home
-			if not moved and best_p == null and a.home != Vector2i(-1, -1):
+			# Resting: return to home and stay there
+			if a.rest_timer > 0 and a.home != Vector2i(-1, -1):
+				var home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
+				if not moved and home_dist > 3:
+					var diff: Vector2i = a.home - a.pos
+					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
+					if _try_move(a, step):
+						a.facing = step
+						moved = true
+				# At home: stay still (skip wander)
+				moved = true
+			# No prey visible (not resting): return to home
+			elif not moved and best_p == null and a.home != Vector2i(-1, -1):
 				var home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
 				if home_dist > 3:
 					var diff: Vector2i = a.home - a.pos
