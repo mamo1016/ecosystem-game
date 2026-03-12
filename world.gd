@@ -81,6 +81,7 @@ var grid: Array          = []
 var available_seeds: int = 20
 var current_seed_id: int = GRASS
 var time_passed: float   = 0.0
+var animal_time: float   = 0.0
 var game_active: bool    = true
 
 var predators: Array = []
@@ -130,10 +131,16 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not game_active: return
 	time_passed += delta
+	animal_time  += delta
 	if time_passed >= update_interval:
 		time_passed -= update_interval
 		if time_passed > update_interval: time_passed = 0.0
 		run_simulation_step()
+	if animal_time >= 0.1:
+		animal_time -= 0.1
+		run_predator_logic()
+		run_apex_logic()
+		queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -336,8 +343,6 @@ func run_simulation_step() -> void:
 	if predators.size() > 5 and randf() < 0.02: spawn_apex_invader()
 
 	run_plant_logic()
-	run_predator_logic()
-	run_apex_logic()
 	update_ui()
 	queue_redraw()
 
@@ -508,7 +513,7 @@ func run_predator_logic() -> void:
 		if p.hunger >= STARVATION_LIMIT: continue
 
 		# 4x movement loop
-		for i in range(2):
+		for i in range(1):
 			var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
 			if eaten_count > 0:
 				p.stomach += eaten_count
@@ -556,7 +561,7 @@ func run_apex_logic() -> void:
 		if a.hunger >= APEX_STARVATION: continue
 
 		# 4x movement loop
-		for i in range(2):
+		for i in range(1):
 			var my_rect = Rect2i(a.pos.x, a.pos.y, a.size, a.size)
 			for j in range(predators.size() - 1, -1, -1):
 				var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, predators[j].size, predators[j].size)
@@ -629,6 +634,7 @@ func update_ui() -> void:
 func _on_restart_button_pressed() -> void:
 	available_seeds = 20
 	time_passed     = 0.0
+	animal_time     = 0.0
 	game_active     = true
 	predators.clear()
 	apexes.clear()
