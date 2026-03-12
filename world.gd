@@ -522,10 +522,6 @@ func run_predator_logic() -> void:
 					else:
 						_try_spawn_offspring(p.pos, alive, p.size)
 
-			# Random turn so animals don't walk straight for hundreds of tiles
-			if randf() < 0.20:
-				p.facing = DIRS.pick_random()
-
 			var moved = false
 			var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
 			if p.facing == Vector2i(1, 0): front_rect = Rect2i(p.pos.x + p.size, p.pos.y, VISION_RANGE, p.size)
@@ -537,6 +533,9 @@ func run_predator_logic() -> void:
 				if _try_move(p, p.facing): moved = true
 
 			if not moved:
+				# No food ahead — randomly turn before wandering so they don't drill straight
+				if randf() < 0.25:
+					p.facing = DIRS.pick_random()
 				var wander = DIRS.duplicate()
 				wander.shuffle()
 				for d in wander:
