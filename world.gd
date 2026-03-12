@@ -37,7 +37,7 @@ const COLOR_MATURE_VARIANTS = [
 # --- MAP ---
 var MAP_WIDTH  = 640
 var MAP_HEIGHT = 360
-const TILE_SIZE  = 2
+const TILE_SIZE  = 4
 const MAP_OFFSET = Vector2(0, 40)
 const PLANT_ZONE_MARGIN = 0.22  # 22% margin on each side — center 56% is plantable
 
@@ -104,7 +104,7 @@ func _ready() -> void:
 	# Calculate map dimension based on the ACTUAL window size, not the whole monitor
 	var win_size = get_viewport().get_visible_rect().size
 	MAP_WIDTH  = int(win_size.x / TILE_SIZE)
-	MAP_HEIGHT = int((win_size.y - 80) / TILE_SIZE) # Leave space for UI
+	MAP_HEIGHT = int((win_size.y - 40) / TILE_SIZE) # 40px for top UI bar
 	
 	var canvas = get_node_or_null("CanvasLayer")
 	if canvas != null:
