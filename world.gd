@@ -169,14 +169,14 @@ func _debug_spawn_predator() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
+	predators.append({ "pos": pos, "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3 })
 	queue_redraw()
 
 func _debug_spawn_apex() -> void:
 	var pos := _mouse_to_grid()
 	pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 	pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
+	apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
 	queue_redraw()
 
 func _draw() -> void:
@@ -416,7 +416,7 @@ func plant_seed(tile_id: int) -> void:
 		var pos = center
 		pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
 		pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
+		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3, "home": pos })
 		available_seeds -= cost
 	elif tile_id == GRASS:
 		if not _in_plant_zone(center): return
@@ -497,11 +497,11 @@ func _random_edge_pos() -> Vector2i:
 		_: return Vector2i(MAP_WIDTH - 1, randi_range(0, MAP_HEIGHT - 1))
 
 func spawn_red_invader() -> void:
-	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3 })
+	predators.append({ "pos": _random_edge_pos(), "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3 })
 
 func spawn_apex_invader() -> void:
 	var apex_pos := _random_edge_pos()
-	apexes.append({ "pos": apex_pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 3, "home": apex_pos })
+	apexes.append({ "pos": apex_pos, "stomach": 0, "hunger": 0, "facing": DIRS.pick_random(), "size": 3, "home": apex_pos })
 
 func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var start_x = max(0, rect.position.x)
@@ -548,7 +548,7 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int, h
 	for d in dirs:
 		var new_pos = parent_pos + d * parent_size
 		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 15 <= MAP_WIDTH and new_pos.y + 15 <= MAP_HEIGHT:
-			var entry = { "pos": new_pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": d, "size": 3 }
+			var entry = { "pos": new_pos, "stomach": 0, "hunger": 0, "facing": d, "size": 3 }
 			if home != Vector2i(-1, -1):
 				entry["home"] = new_pos  # offspring claims spawn point as its own territory
 			list.append(entry)
@@ -559,25 +559,21 @@ func run_predator_logic() -> void:
 		if p.hunger >= STARVATION_LIMIT: continue
 
 		for i in range(1):
-			# Eat 1 plant tile per (10/size) ticks → size tiles per second
-			if p.eating > 0:
-				p.eating -= 1
-			else:
-				var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
-				if plant_pos != Vector2i(-1, -1):
-					_erase_plant_data(plant_pos)
-					set_tile(plant_pos, EMPTY)
-					p.stomach += 1
-					p.hunger = 0
-					p.eating = 2
-					var needed_food = p.size * 10
-					while p.stomach >= needed_food:
-						p.stomach -= needed_food
-						if p.size < 5:
-							p.size += 1
-							needed_food = p.size * 10
-						else:
-							_try_spawn_offspring(p.pos, alive, p.size)
+			# Instantly eat all plant tiles under body
+			var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
+			if plant_pos != Vector2i(-1, -1):
+				_erase_plant_data(plant_pos)
+				set_tile(plant_pos, EMPTY)
+				p.stomach += 1
+				p.hunger = 0
+				var needed_food = p.size * 10
+				while p.stomach >= needed_food:
+					p.stomach -= needed_food
+					if p.size < 5:
+						p.size += 1
+						needed_food = p.size * 10
+					else:
+						_try_spawn_offspring(p.pos, alive, p.size)
 
 			# Poop in goal zone if carrying food
 			if _in_goal_zone(p.pos) and p.stomach > 0:
@@ -588,9 +584,6 @@ func run_predator_logic() -> void:
 					plant_growth[poop] = 0
 
 			var moved = false
-			# Eating slows movement: 70% chance to skip move while eating
-			if p.eating > 0 and randf() < 0.7:
-				moved = true
 			# River slows movement: 60% chance to skip move when in river
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
