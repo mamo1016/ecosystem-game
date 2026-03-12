@@ -587,7 +587,10 @@ func run_predator_logic() -> void:
 					set_tile(poop, GRASS)
 					plant_growth[poop] = 0
 
-			var moved = p.eating > 0  # stay still while eating
+			var moved = false
+			# Eating slows movement: 70% chance to skip move while eating
+			if p.eating > 0 and randf() < 0.7:
+				moved = true
 			# River slows movement: 60% chance to skip move when in river
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
