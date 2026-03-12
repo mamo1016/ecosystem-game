@@ -563,13 +563,27 @@ func run_predator_logic() -> void:
 
 			var moved = false
 			if not moved:
-				var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
-				if p.facing == Vector2i(1, 0): front_rect = Rect2i(p.pos.x + p.size, p.pos.y, VISION_RANGE, p.size)
-				elif p.facing == Vector2i(-1, 0): front_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y, VISION_RANGE, p.size)
-				elif p.facing == Vector2i(0, 1): front_rect = Rect2i(p.pos.x, p.pos.y + p.size, p.size, VISION_RANGE)
-				elif p.facing == Vector2i(0, -1): front_rect = Rect2i(p.pos.x, p.pos.y - VISION_RANGE, p.size, VISION_RANGE)
-				if _find_plant_in_rect(front_rect) != Vector2i(-1, -1):
-					if _try_move(p, p.facing): moved = true
+				# Scan all directions within VISION_RANGE for nearest plant
+				var scan_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y - VISION_RANGE, p.size + VISION_RANGE * 2, p.size + VISION_RANGE * 2)
+				var best_plant = Vector2i(-1, -1)
+				var best_dist = 9999
+				var sx = max(0, scan_rect.position.x)
+				var sy = max(0, scan_rect.position.y)
+				var ex = min(MAP_WIDTH, scan_rect.position.x + scan_rect.size.x)
+				var ey = min(MAP_HEIGHT, scan_rect.position.y + scan_rect.size.y)
+				for bx in range(sx, ex):
+					for by in range(sy, ey):
+						if _is_plant(grid[bx][by]):
+							var d = abs(bx - p.pos.x) + abs(by - p.pos.y)
+							if d < best_dist:
+								best_dist = d
+								best_plant = Vector2i(bx, by)
+				if best_plant != Vector2i(-1, -1):
+					var diff = best_plant - p.pos
+					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
+					if _try_move(p, step):
+						p.facing = step
+						moved = true
 
 			if not moved:
 				# 5% chance to turn randomly
