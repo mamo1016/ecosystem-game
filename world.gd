@@ -1,4 +1,4 @@
-﻿extends Node2D
+extends Node2D
 
 # --- UI REFERENCES ---
 @onready var seed_label     = $CanvasLayer/SeedLabel
@@ -60,7 +60,7 @@ const ANIMAL_SIZE    = 3
 
 # --- RED PREDATOR SETTINGS ---
 const BIRTH_SUCCESS_CHANCE  = 0.25
-const HERB_FOOD_TO_BREED    = 200  # stomach units needed to reproduce
+const HERB_FOOD_TO_BREED    = 30  # stomach units needed to reproduce
 const FULL_DURATION         = 300
 const STARVE_LIMIT          = 150
 const HERBIVORE_LIFESPAN    = 1000
@@ -75,7 +75,7 @@ const APEX_LIFESPAN         = 2000
 const VISION_RANGE    = 12
 const APEX_SCAN_RANGE = 12
 const SCAN_INTERVAL   = 5   # re-scan for target every N ticks
-const MAX_HERBIVORES  = 80  # population cap
+const MAX_HERBIVORES  = 100  # population cap
 const MAX_APEXES      = 20
 
 
