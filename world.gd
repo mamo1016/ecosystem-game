@@ -82,6 +82,10 @@ const GOAL_FILL_TARGET = 50     # need 50/100 tiles covered to win
 var   goal_x: int = 0
 var   goal_y: int = 0
 
+# --- RIVER ---
+const RIVER_WIDTH = 5
+var   river_x: int = 0
+
 # --- STATE ---
 var grid: Array          = []
 var available_seeds: int = 20
@@ -126,8 +130,10 @@ func _ready() -> void:
 	zone_y0 = int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
 	zone_x1 = int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
 	zone_y1 = int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
-	# Goal area: right side of map, vertically centered, outside plant zone
-	goal_x = zone_x1 + 4
+	# River: just outside the plant zone right edge
+	river_x = zone_x1 + 2
+	# Goal area: far right, past the river
+	goal_x = MAP_WIDTH - GOAL_SIZE - 3
 	goal_y = MAP_HEIGHT / 2 - GOAL_SIZE / 2
 
 	_init_grid()
@@ -242,6 +248,12 @@ func _draw() -> void:
 		Rect2(MAP_OFFSET.x + zone_x0 * TILE_SIZE, MAP_OFFSET.y + zone_y0 * TILE_SIZE,
 			  (zone_x1 - zone_x0) * TILE_SIZE, (zone_y1 - zone_y0) * TILE_SIZE),
 		Color(0.9, 0.8, 0.4, 0.5), false, 1.0)
+	# Draw river (blue vertical strip between plant zone and goal zone)
+	var rx := MAP_OFFSET.x + river_x * TILE_SIZE
+	draw_rect(Rect2(rx, MAP_OFFSET.y, RIVER_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.1, 0.4, 0.9, 0.55))
+	# River border lines
+	draw_line(Vector2(rx, MAP_OFFSET.y), Vector2(rx, MAP_OFFSET.y + MAP_HEIGHT * TILE_SIZE), Color(0.2, 0.6, 1.0), 1.5)
+	draw_line(Vector2(rx + RIVER_WIDTH * TILE_SIZE, MAP_OFFSET.y), Vector2(rx + RIVER_WIDTH * TILE_SIZE, MAP_OFFSET.y + MAP_HEIGHT * TILE_SIZE), Color(0.2, 0.6, 1.0), 1.5)
 	# Draw goal zone (purple fill + bright border)
 	var gx := MAP_OFFSET.x + goal_x * TILE_SIZE
 	var gy := MAP_OFFSET.y + goal_y * TILE_SIZE
