@@ -588,6 +588,21 @@ func run_predator_logic() -> void:
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
 			if not moved:
+				# Avoid other herbivores within 3 tiles
+				var repulse := Vector2i(0, 0)
+				for other in predators:
+					if other == p: continue
+					var dx := p.pos.x - other.pos.x
+					var dy := p.pos.y - other.pos.y
+					if abs(dx) <= 3 and abs(dy) <= 3:
+						repulse += Vector2i(signi(dx), signi(dy))
+				if repulse != Vector2i(0, 0):
+					var step := Vector2i(signi(repulse.x), 0) if abs(repulse.x) >= abs(repulse.y) else Vector2i(0, signi(repulse.y))
+					if _try_move(p, step):
+						p.facing = step
+						moved = true
+
+			if not moved:
 				# Scan all directions within VISION_RANGE for nearest plant
 				var scan_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y - VISION_RANGE, p.size + VISION_RANGE * 2, p.size + VISION_RANGE * 2)
 				var best_plant = Vector2i(-1, -1)
