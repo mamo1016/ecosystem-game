@@ -58,15 +58,14 @@ const COST_APEX_SPAWN = 30
 # --- RED PREDATOR SETTINGS ---
 const PLANTS_TO_REPRODUCE = 6
 const BIRTH_SUCCESS_CHANCE = 0.6  # 60% chance to successfully give birth
-const STARVATION_LIMIT    = 150
-const EAT_TURNS           = 3
-const MATURE_EAT_TURNS    = 4
+const FULL_DURATION  = 300   # ticks after eating before becoming starving
+const STARVE_LIMIT   = 150   # ticks while starving before dying
 const HERBIVORE_LIFESPAN  = 1000  # ticks before natural death
 
 # --- APEX PREDATOR SETTINGS ---
-const APEX_REPRODUCE  = 3
-const APEX_STARVATION = 360
-const APEX_EAT_TURNS  = 3
+const APEX_REPRODUCE     = 3
+const APEX_FULL_DURATION = 500
+const APEX_STARVE_LIMIT  = 200
 const APEX_LIFESPAN   = 2000  # ticks before natural death
 
 # --- VISION ---
@@ -108,15 +107,17 @@ var plant_ages: Dictionary = {}
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
 class Animal:
-	var pos:     Vector2i = Vector2i.ZERO
-	var stomach: int      = 0
-	var hunger:  int      = 0
-	var age:     int      = 0
-	var scan_cd: int      = 0
-	var target:  Vector2i = Vector2i(-1, -1)
-	var facing:  Vector2i = Vector2i.ZERO
-	var size:    int      = 3
-	var home:    Vector2i = Vector2i(-1, -1)
+	var pos:        Vector2i = Vector2i.ZERO
+	var stomach:    int      = 0
+	var is_full:    bool     = true
+	var full_timer: int      = 0   # ticks since last meal; exceeds FULL_DURATION → starving
+	var starve_timer: int    = 0   # ticks while starving; exceeds STARVE_LIMIT → dies
+	var age:        int      = 0
+	var scan_cd:    int      = 0
+	var target:     Vector2i = Vector2i(-1, -1)
+	var facing:     Vector2i = Vector2i.ZERO
+	var size:       int      = 3
+	var home:       Vector2i = Vector2i(-1, -1)
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -243,8 +244,8 @@ func _draw() -> void:
 						col = COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
 					draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), col)
 
-	for p in predators: _draw_animal(p, COLOR_PREDATOR, predator_texture, STARVATION_LIMIT)
-	for a in apexes:    _draw_animal(a, COLOR_APEX,     apex_texture,     APEX_STARVATION)
+	for p in predators: _draw_animal(p, COLOR_PREDATOR, predator_texture)
+	for a in apexes:    _draw_animal(a, COLOR_APEX,     apex_texture)
 
 	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color.YELLOW, false, 2.0)
 	# Draw plant zone border
@@ -265,7 +266,7 @@ func _draw() -> void:
 	draw_rect(Rect2(gx, gy, gs, gs), Color(0.7, 0.2, 0.9, 0.25))
 	draw_rect(Rect2(gx, gy, gs, gs), Color(0.8, 0.3, 1.0), false, 2.0)
 
-func _draw_animal(animal: Animal, color: Color, texture: Texture2D, starvation_limit: int) -> void:
+func _draw_animal(animal: Animal, color: Color, texture: Texture2D) -> void:
 	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + animal.size > MAP_WIDTH or animal.pos.y + animal.size > MAP_HEIGHT:
 		return
 	var px: float = MAP_OFFSET.x + animal.pos.x * TILE_SIZE
@@ -276,7 +277,7 @@ func _draw_animal(animal: Animal, color: Color, texture: Texture2D, starvation_l
 		var fw: float = texture.get_width()  / 4.0
 		var fh: float = texture.get_height() / 4.0
 		var col: int = _facing_col(animal.facing)
-		var row: int = _hunger_row(animal.hunger, starvation_limit)
+		var row: int = 0 if animal.is_full else 1
 		var region := Rect2(col * fw, row * fh, fw, fh)
 		draw_texture_rect_region(texture, Rect2(px, py, w, h), region)
 	else:
@@ -289,12 +290,6 @@ func _facing_col(facing: Vector2i) -> int:
 		Vector2i(0, -1): return 2   # up
 		_:               return 3   # down
 
-func _hunger_row(hunger: int, limit: int) -> int:
-	var pct := float(hunger) / float(limit)
-	if pct < 0.15: return 0   # full
-	if pct < 0.40: return 1   # satisfied
-	if pct < 0.70: return 2   # hungry
-	return 3                   # starving
 
 func _draw_facing_indicator(pos: Vector2i, facing: Vector2i, size: int) -> void:
 	var cx: float = MAP_OFFSET.x + pos.x * TILE_SIZE + (size * TILE_SIZE) * 0.5
@@ -560,7 +555,6 @@ func run_predator_logic() -> void:
 	var alive = []
 	for p in predators:
 		if alive.size() >= MAX_HERBIVORES: break
-		if p.hunger >= STARVATION_LIMIT: continue
 
 		for i in range(1):
 			# Instantly eat all plant tiles under body
@@ -569,7 +563,8 @@ func run_predator_logic() -> void:
 				_erase_plant_data(plant_pos)
 				set_tile(plant_pos, EMPTY)
 				p.stomach += 1
-				p.hunger = 0
+				p.is_full = true
+				p.full_timer = 0
 				var needed_food = p.size * 10
 				while p.stomach >= needed_food:
 					p.stomach -= needed_food
@@ -654,18 +649,21 @@ func run_predator_logic() -> void:
 							moved = true
 							break
 			
-			p.hunger += 1
+			p.full_timer += 1
+			if p.full_timer >= FULL_DURATION:
+				p.is_full = false
+			if not p.is_full:
+				p.starve_timer += 1
 			p.age += 1
-			if p.hunger >= STARVATION_LIMIT or p.age >= HERBIVORE_LIFESPAN: break
+			if p.starve_timer >= STARVE_LIMIT or p.age >= HERBIVORE_LIFESPAN: break
 
-		if p.hunger < STARVATION_LIMIT and p.age < HERBIVORE_LIFESPAN:
+		if p.starve_timer < STARVE_LIMIT and p.age < HERBIVORE_LIFESPAN:
 			alive.append(p)
 	predators = alive
 func run_apex_logic() -> void:
 	var alive = []
 	for a in apexes:
 		if alive.size() >= MAX_APEXES: break
-		if a.hunger >= APEX_STARVATION: continue
 
 		# 4x movement loop
 		for i in range(1):
@@ -675,7 +673,8 @@ func run_apex_logic() -> void:
 				if my_rect.intersects(p_rect):
 					predators.remove_at(j)
 					a.stomach += 1
-					a.hunger = 0
+					a.is_full = true
+					a.full_timer = 0
 					var needed_food = a.size
 					while a.stomach >= needed_food:
 						a.stomach -= needed_food
@@ -739,11 +738,15 @@ func run_apex_logic() -> void:
 								moved = true
 								break
 
-			a.hunger += 1
+			a.full_timer += 1
+			if a.full_timer >= APEX_FULL_DURATION:
+				a.is_full = false
+			if not a.is_full:
+				a.starve_timer += 1
 			a.age += 1
-			if a.hunger >= APEX_STARVATION or a.age >= APEX_LIFESPAN: break
+			if a.starve_timer >= APEX_STARVE_LIMIT or a.age >= APEX_LIFESPAN: break
 
-		if a.hunger < APEX_STARVATION and a.age < APEX_LIFESPAN:
+		if a.starve_timer < APEX_STARVE_LIMIT and a.age < APEX_LIFESPAN:
 			alive.append(a)
 	apexes = alive
 
