@@ -77,8 +77,10 @@ const GROWTH_PER_TICK  = 4
 var   update_interval  = 0.001
 
 # --- WIN CONDITION ---
-const STABILITY_GOAL   = 30.0   # seconds all 3 tiers must coexist
-var   stability_timer: float = 0.0
+const GOAL_SIZE        = 10     # 10x10 goal area outside the plant zone
+const GOAL_FILL_TARGET = 50     # need 50/100 tiles covered to win
+var   goal_x: int = 0
+var   goal_y: int = 0
 
 # --- STATE ---
 var grid: Array          = []
@@ -124,6 +126,9 @@ func _ready() -> void:
 	zone_y0 = int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
 	zone_x1 = int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
 	zone_y1 = int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
+	# Goal area: right side of map, vertically centered, outside plant zone
+	goal_x = zone_x1 + 4
+	goal_y = MAP_HEIGHT / 2 - GOAL_SIZE / 2
 
 	_init_grid()
 	update_button_visuals()
@@ -136,20 +141,6 @@ func _process(delta: float) -> void:
 	if not game_active: return
 	time_passed += delta
 	animal_time  += delta
-
-	# Stability timer — all 3 tiers must be alive simultaneously
-	var has_plants   = _count_life() > 0
-	var has_herbi    = predators.size() > 0
-	var has_apex     = apexes.size() > 0
-	if has_plants and has_herbi and has_apex:
-		stability_timer += delta
-		if stability_timer >= STABILITY_GOAL:
-			score_label.text = "VICTORY! Ecosystem Stabilised for 30 seconds!"
-			game_active = false
-			restart_button.show()
-			return
-	else:
-		stability_timer = 0.0
 
 	if time_passed >= update_interval:
 		time_passed -= update_interval
@@ -357,6 +348,17 @@ func _is_plant(id: int) -> bool:
 func _in_plant_zone(pos: Vector2i) -> bool:
 	return pos.x >= zone_x0 and pos.x < zone_x1 and pos.y >= zone_y0 and pos.y < zone_y1
 
+func _in_goal_zone(pos: Vector2i) -> bool:
+	return pos.x >= goal_x and pos.x < goal_x + GOAL_SIZE and pos.y >= goal_y and pos.y < goal_y + GOAL_SIZE
+
+func _count_goal_plants() -> int:
+	var count = 0
+	for x in range(goal_x, goal_x + GOAL_SIZE):
+		for y in range(goal_y, goal_y + GOAL_SIZE):
+			if x >= 0 and x < MAP_WIDTH and y >= 0 and y < MAP_HEIGHT:
+				if _is_plant(grid[x][y]): count += 1
+	return count
+
 func run_simulation_step() -> void:
 	if predators.size() == 0 or randf() < 0.04: spawn_red_invader()
 	if predators.size() > 5 and randf() < 0.02: spawn_apex_invader()
@@ -557,7 +559,7 @@ func run_predator_logic() -> void:
 				if _try_move(p, p.facing): moved = true
 
 			if not moved:
-				if randf() < 0.0001:
+				if randf() < 0.00001:
 					p.facing = DIRS.pick_random()
 				var wander = DIRS.duplicate()
 				wander.shuffle()
@@ -608,7 +610,7 @@ func run_apex_logic() -> void:
 						best_dist = dist
 						best_p = p
 
-			if best_p == null and randf() < 0.0001:
+			if best_p == null and randf() < 0.00001:
 				a.facing = DIRS.pick_random()
 
 			var moved = false
