@@ -79,7 +79,7 @@ const THIRST_LIMIT  = 600  # ticks before dying of thirst (60s)
 
 # --- VISION ---
 const VISION_RANGE    = 30
-const APEX_SCAN_RANGE = 20
+const APEX_SCAN_RANGE = 5
 const SCAN_INTERVAL   = 100   # re-scan for target every N ticks
 const MAX_HERBIVORES  = 100  # population cap
 const MAX_APEXES      = 20
@@ -610,12 +610,12 @@ func run_predator_logic() -> void:
 			# Herbivores are slightly slower than hunters (20% skip)
 			if randf() < 0.2:
 				moved = true
-			# Flee from nearest apex within 15 tiles (highest priority)
+			# Flee from nearest apex: run until 35 tiles away
 			if not moved:
 				for a in apexes:
 					var dx: int = p.pos.x - a.pos.x
 					var dy: int = p.pos.y - a.pos.y
-					if abs(dx) <= 15 and abs(dy) <= 15:
+					if abs(dx) <= 35 and abs(dy) <= 35:
 						var step := Vector2i(signi(dx), 0) if abs(dx) >= abs(dy) else Vector2i(0, signi(dy))
 						if _try_move(p, step):
 							p.facing = step
