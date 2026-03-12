@@ -76,6 +76,10 @@ const SEED_CAP         = 30
 const GROWTH_PER_TICK  = 4
 var   update_interval  = 0.001
 
+# --- WIN CONDITION ---
+const STABILITY_GOAL   = 30.0   # seconds all 3 tiers must coexist
+var   stability_timer: float = 0.0
+
 # --- STATE ---
 var grid: Array          = []
 var available_seeds: int = 20
@@ -132,6 +136,21 @@ func _process(delta: float) -> void:
 	if not game_active: return
 	time_passed += delta
 	animal_time  += delta
+
+	# Stability timer — all 3 tiers must be alive simultaneously
+	var has_plants   = _count_life() > 0
+	var has_herbi    = predators.size() > 0
+	var has_apex     = apexes.size() > 0
+	if has_plants and has_herbi and has_apex:
+		stability_timer += delta
+		if stability_timer >= STABILITY_GOAL:
+			score_label.text = "VICTORY! Ecosystem Stabilised for 30 seconds!"
+			game_active = false
+			restart_button.show()
+			return
+	else:
+		stability_timer = 0.0
+
 	if time_passed >= update_interval:
 		time_passed -= update_interval
 		if time_passed > update_interval: time_passed = 0.0
@@ -622,27 +641,32 @@ func run_apex_logic() -> void:
 	apexes = alive
 
 func update_ui() -> void:
-	var life := _count_life()
-	var pct  := (float(life) / float(MAP_WIDTH * MAP_HEIGHT)) * 100.0
-	score_label.text = "Map Covered: %.1f%%" % pct
-	seed_label.text  = "Seeds: %d / %d" % [available_seeds, SEED_CAP]
-	if pct >= 80.0 and game_active:
-		score_label.text = "VICTORY!  Ecosystem Stabilised."
-		game_active = false
-		restart_button.show()
+	seed_label.text = "Seeds: %d / %d" % [available_seeds, SEED_CAP]
+	var has_plants = _count_life() > 0
+	var has_herbi  = predators.size() > 0
+	var has_apex   = apexes.size() > 0
+	if has_plants and has_herbi and has_apex:
+		score_label.text = "Stable: %.1fs / %.0fs" % [stability_timer, STABILITY_GOAL]
+	else:
+		var missing = []
+		if not has_plants: missing.append("plants")
+		if not has_herbi:  missing.append("herbivores")
+		if not has_apex:   missing.append("apex")
+		score_label.text = "Missing: " + ", ".join(missing)
 
 func _on_restart_button_pressed() -> void:
-	available_seeds = 20
-	time_passed     = 0.0
-	animal_time     = 0.0
-	game_active     = true
+	available_seeds  = 20
+	time_passed      = 0.0
+	animal_time      = 0.0
+	stability_timer  = 0.0
+	game_active      = true
 	predators.clear()
 	apexes.clear()
 	plant_ages.clear()
 	plant_growth.clear()
 	_init_grid()
 	update_ui()
-	score_label.text = "Map Covered: 0.0%"
+	score_label.text = "Missing: plants, herbivores, apex"
 	restart_button.hide()
 	queue_redraw()
 
