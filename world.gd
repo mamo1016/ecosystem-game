@@ -758,9 +758,11 @@ func run_apex_logic() -> void:
 							_try_spawn_offspring(a.pos, alive, a.home)
 						break
 
-			# Tick rest timer
-			if a.rest_timer > 0:
-				a.rest_timer -= 1
+			# Tick rest timer only when at home
+			if a.rest_timer > 0 and a.home != Vector2i(-1, -1):
+				var _home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
+				if _home_dist <= 3:
+					a.rest_timer -= 1
 			var best_p = null
 			# Only scan for prey when not resting
 			if a.rest_timer == 0:
