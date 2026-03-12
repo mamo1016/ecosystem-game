@@ -540,18 +540,25 @@ func run_predator_logic() -> void:
 		if p.hunger >= STARVATION_LIMIT: continue
 
 		for i in range(1):
-			var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
-			if eaten_count > 0:
-				p.stomach += eaten_count
-				p.hunger = 0
-				var needed_food = p.size * 10
-				while p.stomach >= needed_food:
-					p.stomach -= needed_food
-					if p.size < 5:
-						p.size += 1
-						needed_food = p.size * 10
-					else:
-						_try_spawn_offspring(p.pos, alive, p.size)
+			# Eat 1 plant tile per (10/size) ticks → size tiles per second
+			if p.eating > 0:
+				p.eating -= 1
+			else:
+				var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
+				if plant_pos != Vector2i(-1, -1):
+					_erase_plant_data(plant_pos)
+					set_tile(plant_pos, EMPTY)
+					p.stomach += 1
+					p.hunger = 0
+					p.eating = maxi(1, 10 / p.size)
+					var needed_food = p.size * 10
+					while p.stomach >= needed_food:
+						p.stomach -= needed_food
+						if p.size < 5:
+							p.size += 1
+							needed_food = p.size * 10
+						else:
+							_try_spawn_offspring(p.pos, alive, p.size)
 
 			# Poop in goal zone if carrying food
 			if _in_goal_zone(p.pos) and p.stomach > 0:
