@@ -581,6 +581,9 @@ func run_predator_logic() -> void:
 					if _try_move(p, p.facing): moved = true
 
 			if not moved:
+				# 5% chance to turn randomly
+				if randf() < 0.05:
+					p.facing = DIRS.pick_random()
 				# Try to keep current direction first
 				if _try_move(p, p.facing):
 					moved = true
@@ -635,7 +638,7 @@ func run_apex_logic() -> void:
 						best_dist = dist
 						best_p = p
 
-			if best_p == null and randf() < 0.00000001:
+			if best_p == null and randf() < 0.05:
 				a.facing = DIRS.pick_random()
 
 			var moved = false
