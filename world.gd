@@ -83,7 +83,7 @@ const MAX_APEXES      = 20
 const SUPER_LIFESPAN   = 80
 const SEED_CAP         = 30
 const GROWTH_PER_TICK  = 4
-var   update_interval  = 0.1
+var   update_interval  = 0.02
 
 # --- WIN CONDITION ---
 const GOAL_SIZE        = 10     # 10x10 goal area outside the plant zone
