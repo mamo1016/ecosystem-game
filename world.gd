@@ -103,8 +103,7 @@ var game_active: bool    = true
 
 var predators: Array = []
 var apexes: Array = []
-var plant_ages:   Dictionary = {}
-var plant_growth: Dictionary = {}
+var plant_ages: Dictionary = {}
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
@@ -202,26 +201,6 @@ func _draw() -> void:
 				var hash_idx = (x * 7 + y * 11 + (x ^ y) * 3) % 6
 				var empty_color: Color = COLOR_ARID_VARIANTS[hash_idx] if (x < zone_x0 or x >= zone_x1 or y < zone_y0 or y >= zone_y1) else COLOR_DESERT_VARIANTS[hash_idx]
 				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), empty_color)
-			elif tile_id == GRASS:
-				var pos := Vector2i(x, y)
-				# Desert base under growing grass
-				var desert_idx = (x * 7 + y * 11 + (x ^ y) * 3) % 6
-				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), COLOR_DESERT_VARIANTS[desert_idx])
-				var growth_val: int = plant_growth.get(pos, 0)
-				var total_cols: int = mini(growth_val / 10, 10)
-				var primary_dir: Vector2i = Vector2i(-1, 0)
-				for d in DIRS:
-					var n: Vector2i = pos + d
-					if get_tile(n) == MATURE:
-						primary_dir = d
-						break
-				for c in range(total_cols):
-					match primary_dir:
-						Vector2i(-1, 0): draw_rect(Rect2(px + c * sub_w, py, sub_w, TILE_SIZE), COLOR_GRASS)
-						Vector2i(1, 0):  draw_rect(Rect2(px + (9 - c) * sub_w, py, sub_w, TILE_SIZE), COLOR_GRASS)
-
-						Vector2i(0, -1): draw_rect(Rect2(px, py + c * sub_w, TILE_SIZE, sub_w), COLOR_GRASS)
-						_:               draw_rect(Rect2(px, py + (9 - c) * sub_w, TILE_SIZE, sub_w), COLOR_GRASS)
 			elif tile_id != EMPTY:
 				if plant_texture:
 					var fw: float = plant_texture.get_width() / 3.0
@@ -464,37 +443,23 @@ func run_plant_logic() -> void:
 		elif randf() < 0.025:
 			_spread_from_super(pos)
 
-	for pos in plant_growth.keys().duplicate():
-		if plant_growth[pos] >= 100 and get_tile(pos) == GRASS:
-			set_tile(pos, MATURE)
-			plant_growth.erase(pos)
-			if randf() < 0.10: _add_seeds(1)
-
 	var mature_arr = tiles_of(MATURE)
 	for pos in mature_arr:
 		for d in DIRS:
 			var neighbor: Vector2i = pos + d
 			if get_tile(neighbor) == EMPTY and randf() < 0.05 and not _in_river(neighbor):
-				set_tile(neighbor, GRASS)
-				plant_growth[neighbor] = 0
-
-	for pos in plant_growth.keys().duplicate():
-		if get_tile(pos) != GRASS:
-			plant_growth.erase(pos)
-			continue
-		plant_growth[pos] = mini(plant_growth[pos] + GROWTH_PER_TICK, 100)
+				set_tile(neighbor, MATURE)
+				if randf() < 0.10: _add_seeds(1)
 
 func _spread_from_super(parent: Vector2i) -> void:
 	var jump := Vector2i(randi_range(-8, 8), randi_range(-8, 8))
 	if jump == Vector2i.ZERO: return
 	var new_pos: Vector2i = parent + jump
 	if get_tile(new_pos) != EMPTY or _in_river(new_pos): return
-	set_tile(new_pos, GRASS)
-	plant_growth[new_pos] = 0
+	set_tile(new_pos, MATURE)
 
 func _erase_plant_data(pos: Vector2i) -> void:
 	plant_ages.erase(pos)
-	plant_growth.erase(pos)
 
 func _random_edge_pos() -> Vector2i:
 	match randi_range(0, 3):
@@ -590,8 +555,7 @@ func run_predator_logic() -> void:
 				p.stomach -= 1
 				var poop := Vector2i(p.pos.x + randi_range(0, p.size - 1), p.pos.y + randi_range(0, p.size - 1))
 				if get_tile(poop) == EMPTY:
-					set_tile(poop, GRASS)
-					plant_growth[poop] = 0
+					set_tile(poop, MATURE)
 
 			var moved = false
 			# River slows movement: 60% chance to skip move when in river
@@ -783,7 +747,6 @@ func _on_restart_button_pressed() -> void:
 	predators.clear()
 	apexes.clear()
 	plant_ages.clear()
-	plant_growth.clear()
 	_init_grid()
 	update_ui()
 	score_label.text = "Goal: 0 / %d" % GOAL_FILL_TARGET
