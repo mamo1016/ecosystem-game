@@ -59,7 +59,7 @@ const COST_APEX_SPAWN = 30
 const ANIMAL_SIZE    = 3
 
 # --- RED PREDATOR SETTINGS ---
-const BIRTH_SUCCESS_CHANCE  = 0.6
+const BIRTH_SUCCESS_CHANCE  = 0.25
 const HERB_FOOD_TO_BREED    = 10   # stomach units needed to reproduce
 const FULL_DURATION         = 300
 const STARVE_LIMIT          = 150
