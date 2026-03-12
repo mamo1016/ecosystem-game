@@ -1,4 +1,4 @@
-extends Node2D
+﻿extends Node2D
 
 # --- UI REFERENCES ---
 @onready var seed_label     = $CanvasLayer/SeedLabel
@@ -63,7 +63,7 @@ const BIRTH_SUCCESS_CHANCE  = 0.25
 const HERB_FOOD_TO_BREED    = 30  # stomach units needed to reproduce
 const FULL_DURATION         = 300
 const STARVE_LIMIT          = 50
-const HERBIVORE_LIFESPAN    = 200
+const HERBIVORE_LIFESPAN    = 1000
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
@@ -683,6 +683,13 @@ func run_apex_logic() -> void:
 							a.stomach -= APEX_FOOD_TO_BREED
 							_try_spawn_offspring(a.pos, alive, a.home)
 						break
+
+			# Deposit seed in goal zone
+			if _in_goal_zone(a.pos) and a.stomach > 0:
+				a.stomach -= 1
+				var poop := Vector2i(a.pos.x + randi_range(0, ANIMAL_SIZE - 1), a.pos.y + randi_range(0, ANIMAL_SIZE - 1))
+				if get_tile(poop) == EMPTY:
+					set_tile(poop, MATURE)
 
 			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
 			var best_p = null
