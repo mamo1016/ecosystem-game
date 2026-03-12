@@ -56,7 +56,7 @@ const APEX_SCAN_RANGE = 20
 const SUPER_LIFESPAN   = 80
 const SEED_CAP         = 30
 const GROWTH_PER_TICK  = 2
-var   update_interval  = 0.1
+var   update_interval  = 0.001
 
 # --- STATE ---
 var grid: Array          = []
