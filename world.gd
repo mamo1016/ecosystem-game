@@ -62,8 +62,8 @@ const ANIMAL_SIZE    = 3
 const BIRTH_SUCCESS_CHANCE  = 0.25
 const HERB_FOOD_TO_BREED    = 30  # stomach units needed to reproduce
 const FULL_DURATION         = 300
-const STARVE_LIMIT          = 150
-const HERBIVORE_LIFESPAN    = 1000
+const STARVE_LIMIT          = 50
+const HERBIVORE_LIFESPAN    = 200
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
@@ -82,6 +82,7 @@ const MAX_APEXES      = 20
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN   = 80
 const SEED_CAP         = 30
+const MAX_SPREAD_PER_TICK = 300
 const GROWTH_PER_TICK  = 4
 var   update_interval  = 0.1
 
@@ -106,6 +107,8 @@ var game_active: bool    = true
 var predators: Array = []
 var apexes: Array = []
 var plant_ages: Dictionary = {}
+var mature_set: Dictionary = {}   # Vector2i -> true, for all MATURE tiles
+var spread_cursor: int = 0
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
@@ -124,6 +127,9 @@ class Animal:
 var predator_texture: Texture2D
 var apex_texture: Texture2D
 var plant_texture: Texture2D
+var bg_image: Image = null
+var bg_texture: ImageTexture = null
+var bg_dirty: bool = false
 
 # Cached plant zone bounds (computed once in _ready after MAP size is known)
 var zone_x0: int = 0
@@ -157,6 +163,11 @@ func _ready() -> void:
 	goal_y = MAP_HEIGHT / 2 - GOAL_SIZE / 2
 
 	_init_grid()
+	bg_image = Image.create(MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE, false, Image.FORMAT_RGB8)
+	for x in range(MAP_WIDTH):
+		for y in range(MAP_HEIGHT):
+			_paint_tile(x, y, _tile_pixel_color(x, y, EMPTY))
+	bg_texture = ImageTexture.create_from_image(bg_image)
 	update_button_visuals()
 	update_ui()
 	predator_texture = load("res://predator_spritesheet.png")
@@ -176,7 +187,10 @@ func _process(delta: float) -> void:
 		animal_time -= 0.1
 		run_predator_logic()
 		run_apex_logic()
-		queue_redraw()
+	if bg_dirty:
+		bg_texture.update(bg_image)
+		bg_dirty = false
+	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -207,61 +221,39 @@ func _debug_spawn_apex() -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	# Draw the "playground" background
-	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.62, 0.48, 0.28)) # Desert background
-	
-	var sub_w: float = float(TILE_SIZE) / 10.0
+	# Draw background tiles as single texture
+	if bg_texture:
+		draw_texture(bg_texture, MAP_OFFSET)
+	else:
+		draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.62, 0.48, 0.28))
 
-	for x in range(MAP_WIDTH):
-		for y in range(MAP_HEIGHT):
-			var px: float = MAP_OFFSET.x + x * TILE_SIZE
-			var py: float = MAP_OFFSET.y + y * TILE_SIZE
-			var tile_id: int = grid[x][y]
-
-			if tile_id == EMPTY:
-				var hash_idx = (x * 7 + y * 11 + (x ^ y) * 3) % 6
-				var empty_color: Color = COLOR_ARID_VARIANTS[hash_idx] if (x < zone_x0 or x >= zone_x1 or y < zone_y0 or y >= zone_y1) else COLOR_DESERT_VARIANTS[hash_idx]
-				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), empty_color)
-			elif tile_id != EMPTY:
-				if plant_texture:
-					var fw: float = plant_texture.get_width() / 3.0
-					var fh: float = plant_texture.get_height()
-					var frame: int = 0
-					match tile_id:
-						GRASS:  frame = 0
-						MATURE: frame = 1
-						SUPER:  frame = 2
-					var region := Rect2(frame * fw, 0, fw, fh)
-					var bg_color := Color.WHITE
-					if tile_id == MATURE:
-						bg_color = COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
-					elif tile_id == SUPER:
-						bg_color = COLOR_SUPER
-					# Draw solid background first so transparent sprite pixels don't show the dark bg
-					draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), bg_color)
-					draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
-				else:
-					var col := _tile_colour(tile_id)
-					if tile_id == MATURE:
-						col = COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
-					draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), col)
+	# Draw plant sprites on top of background colors
+	if plant_texture:
+		var fw: float = plant_texture.get_width() / 3.0
+		var fh: float = plant_texture.get_height()
+		for pos in mature_set:
+			var px: float = MAP_OFFSET.x + pos.x * TILE_SIZE
+			var py: float = MAP_OFFSET.y + pos.y * TILE_SIZE
+			var region := Rect2(fw, 0, fw, fh)  # frame 1 = MATURE
+			draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+		for pos in plant_ages:
+			var px: float = MAP_OFFSET.x + pos.x * TILE_SIZE
+			var py: float = MAP_OFFSET.y + pos.y * TILE_SIZE
+			var region := Rect2(fw * 2, 0, fw, fh)  # frame 2 = SUPER
+			draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
 
 	for p in predators: _draw_animal(p, COLOR_PREDATOR, predator_texture)
 	for a in apexes:    _draw_animal(a, COLOR_APEX,     apex_texture)
 
 	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color.YELLOW, false, 2.0)
-	# Draw plant zone border
 	draw_rect(
 		Rect2(MAP_OFFSET.x + zone_x0 * TILE_SIZE, MAP_OFFSET.y + zone_y0 * TILE_SIZE,
 			  (zone_x1 - zone_x0) * TILE_SIZE, (zone_y1 - zone_y0) * TILE_SIZE),
 		Color(0.9, 0.8, 0.4, 0.5), false, 1.0)
-	# Draw river (blue vertical strip between plant zone and goal zone)
 	var rx := MAP_OFFSET.x + river_x * TILE_SIZE
 	draw_rect(Rect2(rx, MAP_OFFSET.y, RIVER_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.1, 0.4, 0.9, 0.55))
-	# River border lines
 	draw_line(Vector2(rx, MAP_OFFSET.y), Vector2(rx, MAP_OFFSET.y + MAP_HEIGHT * TILE_SIZE), Color(0.2, 0.6, 1.0), 1.5)
 	draw_line(Vector2(rx + RIVER_WIDTH * TILE_SIZE, MAP_OFFSET.y), Vector2(rx + RIVER_WIDTH * TILE_SIZE, MAP_OFFSET.y + MAP_HEIGHT * TILE_SIZE), Color(0.2, 0.6, 1.0), 1.5)
-	# Draw goal zone (purple fill + bright border)
 	var gx := MAP_OFFSET.x + goal_x * TILE_SIZE
 	var gy := MAP_OFFSET.y + goal_y * TILE_SIZE
 	var gs := GOAL_SIZE * TILE_SIZE
@@ -293,31 +285,23 @@ func _facing_col(facing: Vector2i) -> int:
 		_:               return 3   # down
 
 
-func _draw_facing_indicator(pos: Vector2i, facing: Vector2i, size: int) -> void:
-	var cx: float = MAP_OFFSET.x + pos.x * TILE_SIZE + (size * TILE_SIZE) * 0.5
-	var cy: float = MAP_OFFSET.y + pos.y * TILE_SIZE + (size * TILE_SIZE) * 0.5
-	var s: float  = (size * TILE_SIZE) * 0.25
-	var tip: Vector2
-	var left_pt: Vector2
-	var right_pt: Vector2
-	match facing:
-		Vector2i(0, -1):
-			tip      = Vector2(cx, cy - s)
-			left_pt  = Vector2(cx - s * 0.5, cy + s * 0.5)
-			right_pt = Vector2(cx + s * 0.5, cy + s * 0.5)
-		Vector2i(0, 1):
-			tip      = Vector2(cx, cy + s)
-			left_pt  = Vector2(cx - s * 0.5, cy - s * 0.5)
-			right_pt = Vector2(cx + s * 0.5, cy - s * 0.5)
-		Vector2i(-1, 0):
-			tip      = Vector2(cx - s, cy)
-			left_pt  = Vector2(cx + s * 0.5, cy - s * 0.5)
-			right_pt = Vector2(cx + s * 0.5, cy + s * 0.5)
+func _tile_pixel_color(x: int, y: int, tile_id: int) -> Color:
+	match tile_id:
+		MATURE: return COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
+		SUPER:  return COLOR_SUPER
 		_:
-			tip      = Vector2(cx + s, cy)
-			left_pt  = Vector2(cx - s * 0.5, cy - s * 0.5)
-			right_pt = Vector2(cx - s * 0.5, cy + s * 0.5)
-	draw_colored_polygon(PackedVector2Array([tip, left_pt, right_pt]), Color.WHITE)
+			var hash_idx: int = (x * 7 + y * 11 + (x ^ y) * 3) % 6
+			if x < zone_x0 or x >= zone_x1 or y < zone_y0 or y >= zone_y1:
+				return COLOR_ARID_VARIANTS[hash_idx]
+			else:
+				return COLOR_DESERT_VARIANTS[hash_idx]
+
+func _paint_tile(x: int, y: int, color: Color) -> void:
+	var px: int = x * TILE_SIZE
+	var py: int = y * TILE_SIZE
+	for tx in range(TILE_SIZE):
+		for ty in range(TILE_SIZE):
+			bg_image.set_pixel(px + tx, py + ty, color)
 
 func _tile_colour(id: int) -> Color:
 	match id:
@@ -328,11 +312,17 @@ func _tile_colour(id: int) -> Color:
 
 func _init_grid() -> void:
 	grid = []
+	mature_set.clear()
 	for x in range(MAP_WIDTH):
 		var col := []
 		col.resize(MAP_HEIGHT)
 		col.fill(EMPTY)
 		grid.append(col)
+	if bg_image:
+		for x in range(MAP_WIDTH):
+			for y in range(MAP_HEIGHT):
+				_paint_tile(x, y, _tile_pixel_color(x, y, EMPTY))
+		bg_dirty = true
 
 func get_tile(pos: Vector2i) -> int:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return -1
@@ -341,15 +331,13 @@ func get_tile(pos: Vector2i) -> int:
 func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
 	grid[pos.x][pos.y] = id
-	queue_redraw()
-
-func tiles_of(id: int) -> Array:
-	var out: Array = []
-	for x in range(MAP_WIDTH):
-		for y in range(MAP_HEIGHT):
-			if grid[x][y] == id:
-				out.append(Vector2i(x, y))
-	return out
+	if id == MATURE:
+		mature_set[pos] = true
+	else:
+		mature_set.erase(pos)
+	if bg_image:
+		_paint_tile(pos.x, pos.y, _tile_pixel_color(pos.x, pos.y, id))
+		bg_dirty = true
 
 func _mouse_to_grid() -> Vector2i:
 	var mp := get_global_mouse_position()
@@ -396,11 +384,7 @@ func run_simulation_step() -> void:
 		restart_button.show()
 
 func _count_life() -> int:
-	var count = 0
-	for x in range(MAP_WIDTH):
-		for y in range(MAP_HEIGHT):
-			if _is_plant(grid[x][y]): count += 1
-	return count
+	return mature_set.size() + plant_ages.size()
 
 func plant_seed(tile_id: int) -> void:
 	var cost: int
@@ -462,13 +446,18 @@ func run_plant_logic() -> void:
 		elif randf() < 0.025:
 			_spread_from_super(pos)
 
-	var mature_arr = tiles_of(MATURE)
-	for pos in mature_arr:
-		for d in DIRS:
-			var neighbor: Vector2i = pos + d
-			if get_tile(neighbor) == EMPTY and randf() < 0.01 and not _in_river(neighbor):
-				set_tile(neighbor, MATURE)
-				if randf() < 0.10: _add_seeds(1)
+	var keys = mature_set.keys()
+	var n := keys.size()
+	if n > 0:
+		var count := mini(MAX_SPREAD_PER_TICK, n)
+		for i in range(count):
+			var pos: Vector2i = keys[(spread_cursor + i) % n]
+			for d in DIRS:
+				var neighbor: Vector2i = pos + d
+				if get_tile(neighbor) == EMPTY and randf() < 0.01 and not _in_river(neighbor):
+					set_tile(neighbor, MATURE)
+					if randf() < 0.10: _add_seeds(1)
+		spread_cursor = (spread_cursor + count) % n
 
 func _spread_from_super(parent: Vector2i) -> void:
 	var jump := Vector2i(randi_range(-8, 8), randi_range(-8, 8))
@@ -759,6 +748,8 @@ func _on_restart_button_pressed() -> void:
 	predators.clear()
 	apexes.clear()
 	plant_ages.clear()
+	mature_set.clear()
+	spread_cursor = 0
 	_init_grid()
 	update_ui()
 	score_label.text = "Goal: 0 / %d" % GOAL_FILL_TARGET
