@@ -65,11 +65,11 @@ const BIRTH_SUCCESS_CHANCE  = 0.25
 const HERB_STOMACH_CAP      = 30   # plants to eat before full
 const HERB_FOOD_TO_BREED    = 200  # lifetime plants eaten to reproduce (unused now, kept for ref)
 const FULL_DURATION         = 300
-const STARVE_LIMIT          = 200
+const STARVE_LIMIT          = 1000
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
-const POOP_MIN_DIST         = 20   # minimum distance from current pos to poop spot
+const POOP_MIN_DIST         = 10   # minimum distance from current pos to poop spot
 const DUNG_RIPEN_TICKS      = 200  # 20 seconds at 10 ticks/sec before dung becomes a plant
 const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 200
@@ -88,7 +88,7 @@ const MAX_APEXES      = 20
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN   = 80
 const SEED_CAP         = 30
-const MAX_SPREAD_PER_TICK = 600
+const MAX_SPREAD_PER_TICK = 1200
 const GROWTH_PER_TICK  = 4
 var   update_interval  = 0.1
 
@@ -109,6 +109,7 @@ var current_seed_id: int = GRASS
 var time_passed: float   = 0.0
 var animal_time: float   = 0.0
 var game_active: bool    = true
+var herbivore_auto_spawn: bool = true
 
 var predators: Array = []
 var apexes: Array = []
@@ -391,7 +392,7 @@ func _count_goal_plants() -> int:
 	return count
 
 func run_simulation_step() -> void:
-	if predators.size() == 0 or randf() < 0.04: spawn_red_invader()
+	if herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04): spawn_red_invader()
 
 	run_plant_logic()
 	update_ui()
@@ -484,7 +485,7 @@ func run_plant_logic() -> void:
 			var pos: Vector2i = keys[(spread_cursor + i) % n]
 			for d in DIRS:
 				var neighbor: Vector2i = pos + d
-				if get_tile(neighbor) == EMPTY and randf() < 0.01 and not _in_river(neighbor):
+				if get_tile(neighbor) == EMPTY and randf() < 0.05 and not _in_river(neighbor):
 					set_tile(neighbor, MATURE)
 					if randf() < 0.10: _add_seeds(1)
 		spread_cursor = (spread_cursor + count) % n
