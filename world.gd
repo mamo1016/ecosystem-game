@@ -131,9 +131,11 @@ class Animal:
 	var eat_cd:       int      = 0
 	var scan_cd:      int      = 0
 	var target:       Vector2i = Vector2i(-1, -1)
-	var facing:       Vector2i = Vector2i.ZERO
-	var home:         Vector2i = Vector2i(-1, -1)
-	var thirst:       int      = 0
+	var facing:         Vector2i = Vector2i.ZERO
+	var home:           Vector2i = Vector2i(-1, -1)
+	var thirst:         int      = 0
+	var wander_target:  Vector2i = Vector2i(-1, -1)
+	var wander_cd:      int      = 0
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -687,22 +689,31 @@ func run_predator_logic() -> void:
 				else:
 					p.target = Vector2i(-1, -1)
 
-			if not moved:
-				# 5% chance to turn randomly
-				if randf() < 0.05:
-					p.facing = DIRS.pick_random()
-				# Try to keep current direction first
-				if _try_move(p, p.facing):
-					moved = true
+			# Update wander destination every 100 ticks (10s)
+			p.wander_cd -= 1
+			if p.wander_cd <= 0:
+				p.wander_cd = 100
+				var angle: float = randf() * TAU
+				var wx: int = clampi(p.pos.x + int(cos(angle) * 20), 0, MAP_WIDTH - 1)
+				var wy: int = clampi(p.pos.y + int(sin(angle) * 20), 0, MAP_HEIGHT - 1)
+				p.wander_target = Vector2i(wx, wy)
+			if not moved and p.wander_target != Vector2i(-1, -1):
+				var diff: Vector2i = p.wander_target - p.pos
+				if abs(diff.x) + abs(diff.y) <= 2:
+					p.wander_target = Vector2i(-1, -1)
 				else:
-					# Only change direction when actually blocked
-					var wander = DIRS.duplicate()
-					wander.shuffle()
-					for d in wander:
-						if _try_move(p, d):
-							p.facing = d
-							moved = true
-							break
+					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
+					if _try_move(p, step):
+						p.facing = step
+						moved = true
+					else:
+						var wander = DIRS.duplicate()
+						wander.shuffle()
+						for d in wander:
+							if _try_move(p, d):
+								p.facing = d
+								moved = true
+								break
 			
 			p.full_timer += 1
 			if p.full_timer >= FULL_DURATION:
