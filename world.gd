@@ -94,6 +94,12 @@ var predator_texture: Texture2D
 var apex_texture: Texture2D
 var plant_texture: Texture2D
 
+# Cached plant zone bounds (computed once in _ready after MAP size is known)
+var zone_x0: int = 0
+var zone_y0: int = 0
+var zone_x1: int = 0
+var zone_y1: int = 0
+
 func _ready() -> void:
 	# Calculate map dimension based on the ACTUAL window size, not the whole monitor
 	var win_size = get_viewport().get_visible_rect().size
@@ -109,6 +115,11 @@ func _ready() -> void:
 		if btn != null:
 			btn.position = Vector2(win_size.x / 2 - 150, win_size.y / 2 - 25)
 	
+	zone_x0 = int(MAP_WIDTH  * PLANT_ZONE_MARGIN)
+	zone_y0 = int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
+	zone_x1 = int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
+	zone_y1 = int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
+
 	_init_grid()
 	update_button_visuals()
 	update_ui()
@@ -159,11 +170,7 @@ func _draw() -> void:
 
 			if tile_id == EMPTY:
 				var hash_idx = (x * 7 + y * 11 + (x ^ y) * 3) % 6
-				var empty_color: Color
-				if _in_plant_zone(Vector2i(x, y)):
-					empty_color = COLOR_DESERT_VARIANTS[hash_idx]
-				else:
-					empty_color = COLOR_ARID_VARIANTS[hash_idx]
+				var empty_color: Color = COLOR_ARID_VARIANTS[hash_idx] if (x < zone_x0 or x >= zone_x1 or y < zone_y0 or y >= zone_y1) else COLOR_DESERT_VARIANTS[hash_idx]
 				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), empty_color)
 			elif tile_id == GRASS:
 				var pos := Vector2i(x, y)
@@ -214,13 +221,9 @@ func _draw() -> void:
 
 	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color.YELLOW, false, 2.0)
 	# Draw plant zone border
-	var zx0 := int(MAP_WIDTH  * PLANT_ZONE_MARGIN)
-	var zy0 := int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
-	var zx1 := int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
-	var zy1 := int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
 	draw_rect(
-		Rect2(MAP_OFFSET.x + zx0 * TILE_SIZE, MAP_OFFSET.y + zy0 * TILE_SIZE,
-			  (zx1 - zx0) * TILE_SIZE, (zy1 - zy0) * TILE_SIZE),
+		Rect2(MAP_OFFSET.x + zone_x0 * TILE_SIZE, MAP_OFFSET.y + zone_y0 * TILE_SIZE,
+			  (zone_x1 - zone_x0) * TILE_SIZE, (zone_y1 - zone_y0) * TILE_SIZE),
 		Color(0.9, 0.8, 0.4, 0.5), false, 1.0)
 
 func _draw_animal(animal: Dictionary, color: Color, texture: Texture2D, starvation_limit: int) -> void:
@@ -326,11 +329,7 @@ func _is_plant(id: int) -> bool:
 	return id == GRASS or id == SUPER or id == MATURE
 
 func _in_plant_zone(pos: Vector2i) -> bool:
-	var x0 := int(MAP_WIDTH  * PLANT_ZONE_MARGIN)
-	var y0 := int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
-	var x1 := int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
-	var y1 := int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
-	return pos.x >= x0 and pos.x < x1 and pos.y >= y0 and pos.y < y1
+	return pos.x >= zone_x0 and pos.x < zone_x1 and pos.y >= zone_y0 and pos.y < zone_y1
 
 func run_simulation_step() -> void:
 	if predators.size() == 0 or randf() < 0.04: spawn_red_invader()
