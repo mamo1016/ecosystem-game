@@ -580,14 +580,15 @@ func run_predator_logic() -> void:
 				p.scan_cd = SCAN_INTERVAL
 				var best_plant := Vector2i(-1, -1)
 				var best_dist := 9999
-				var sx := max(0, p.pos.x - VISION_RANGE)
-				var sy := max(0, p.pos.y - VISION_RANGE)
-				var ex := min(MAP_WIDTH,  p.pos.x + VISION_RANGE)
-				var ey := min(MAP_HEIGHT, p.pos.y + VISION_RANGE)
+				var ppos: Vector2i = p.pos
+				var sx: int = max(0, ppos.x - VISION_RANGE)
+				var sy: int = max(0, ppos.y - VISION_RANGE)
+				var ex: int = min(MAP_WIDTH,  ppos.x + VISION_RANGE)
+				var ey: int = min(MAP_HEIGHT, ppos.y + VISION_RANGE)
 				for bx in range(sx, ex):
 					for by in range(sy, ey):
 						if _is_plant(grid[bx][by]):
-							var d := abs(bx - p.pos.x) + abs(by - p.pos.y)
+							var d: int = abs(bx - ppos.x) + abs(by - ppos.y)
 							if d < best_dist:
 								best_dist = d
 								best_plant = Vector2i(bx, by)
@@ -597,7 +598,7 @@ func run_predator_logic() -> void:
 
 			if not moved and p.target != Vector2i(-1, -1):
 				if _is_plant(get_tile(p.target)):
-					var diff := p.target - p.pos
+					var diff: Vector2i = (p.target as Vector2i) - (p.pos as Vector2i)
 					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
 					if _try_move(p, step):
 						p.facing = step
