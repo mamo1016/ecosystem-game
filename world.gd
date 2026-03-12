@@ -21,10 +21,10 @@ const COLOR_APEX     = Color(0.15, 0.35, 0.95)
 const COLOR_MATURE   = Color(0.04, 0.50, 0.12)
 
 # --- MAP ---
-var MAP_WIDTH  = 300
-var MAP_HEIGHT = 200
+var MAP_WIDTH  = 640
+var MAP_HEIGHT = 360
 const TILE_SIZE  = 2
-const MAP_OFFSET = Vector2(0, 60)
+const MAP_OFFSET = Vector2(0, 40)
 
 # --- COSTS ---
 const COST_GRASS      = 3
@@ -70,19 +70,20 @@ var predator_texture: Texture2D
 var apex_texture: Texture2D
 
 func _ready() -> void:
-	# Fill the screen: calculate map size from actual window dimensions
-	var screen := DisplayServer.screen_get_size()
-	MAP_WIDTH  = screen.x / TILE_SIZE
-	MAP_HEIGHT = (screen.y - 120) / TILE_SIZE  # leave 120px for UI at top
-
+	# Calculate map dimension based on the ACTUAL window size, not the whole monitor
+	var win_size = get_viewport().get_visible_rect().size
+	MAP_WIDTH  = int(win_size.x / TILE_SIZE)
+	MAP_HEIGHT = int((win_size.y - 80) / TILE_SIZE) # Leave space for UI
+	
 	var canvas = get_node_or_null("CanvasLayer")
 	if canvas != null:
 		var hbox = canvas.get_node_or_null("HBoxContainer")
 		if hbox != null:
-			hbox.position = Vector2(screen.x / 2 - 300, screen.y - 55)
+			hbox.position = Vector2(win_size.x / 2 - 300, win_size.y - 50)
 		var btn = canvas.get_node_or_null("RestartButton")
 		if btn != null:
-			btn.position = Vector2(screen.x / 2 - 150, screen.y / 2 - 25)
+			btn.position = Vector2(win_size.x / 2 - 150, win_size.y / 2 - 25)
+	
 	_init_grid()
 	update_button_visuals()
 	update_ui()
@@ -119,6 +120,9 @@ func _debug_spawn_apex() -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	# Draw the "playground" background
+	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.2, 0.2, 0.2)) # Dark gray background
+	
 	var sub_w: float = float(TILE_SIZE) / 10.0
 
 	for x in range(MAP_WIDTH):
@@ -128,7 +132,6 @@ func _draw() -> void:
 			var tile_id: int = grid[x][y]
 
 			if tile_id == GRASS:
-				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), COLOR_EMPTY)
 				var pos := Vector2i(x, y)
 				var growth_val: int = plant_growth.get(pos, 0)
 				var total_cols: int = mini(growth_val / 10, 10)
@@ -142,6 +145,7 @@ func _draw() -> void:
 					match primary_dir:
 						Vector2i(-1, 0): draw_rect(Rect2(px + c * sub_w, py, sub_w, TILE_SIZE), COLOR_GRASS)
 						Vector2i(1, 0):  draw_rect(Rect2(px + (9 - c) * sub_w, py, sub_w, TILE_SIZE), COLOR_GRASS)
+
 						Vector2i(0, -1): draw_rect(Rect2(px, py + c * sub_w, TILE_SIZE, sub_w), COLOR_GRASS)
 						_:               draw_rect(Rect2(px, py + (9 - c) * sub_w, TILE_SIZE, sub_w), COLOR_GRASS)
 			elif tile_id != EMPTY:
