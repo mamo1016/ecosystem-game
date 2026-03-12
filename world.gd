@@ -19,6 +19,12 @@ const COLOR_PREDATOR = Color(0.90, 0.10, 0.10)
 const COLOR_SUPER    = Color(1.00, 0.88, 0.00)
 const COLOR_APEX     = Color(0.15, 0.35, 0.95)
 const COLOR_MATURE   = Color(0.04, 0.50, 0.12)
+const COLOR_MATURE_VARIANTS = [
+	Color(0.04, 0.50, 0.12),  # dark green
+	Color(0.12, 0.68, 0.22),  # medium green
+	Color(0.18, 0.38, 0.09),  # olive green
+	Color(0.06, 0.55, 0.32),  # teal green
+]
 
 # --- MAP ---
 var MAP_WIDTH  = 640
@@ -160,9 +166,15 @@ func _draw() -> void:
 						MATURE: frame = 1
 						SUPER:  frame = 2
 					var region := Rect2(frame * fw, 0, fw, fh)
-					draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
+					var modulate := Color.WHITE
+					if tile_id == MATURE:
+						modulate = COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
+					draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region, modulate)
 				else:
-					draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), _tile_colour(tile_id))
+					var col := _tile_colour(tile_id)
+					if tile_id == MATURE:
+						col = COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
+					draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), col)
 
 	for p in predators: _draw_animal(p, COLOR_PREDATOR, predator_texture, STARVATION_LIMIT)
 	for a in apexes:    _draw_animal(a, COLOR_APEX,     apex_texture,     APEX_STARVATION)
