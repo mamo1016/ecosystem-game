@@ -21,10 +21,10 @@ const COLOR_APEX     = Color(0.15, 0.35, 0.95)
 const COLOR_MATURE   = Color(0.04, 0.50, 0.12)
 
 # --- MAP ---
-const MAP_WIDTH  = 150
-const MAP_HEIGHT = 130
-const TILE_SIZE  = 1
-const MAP_OFFSET = Vector2(0, 8)
+var MAP_WIDTH  = 300
+var MAP_HEIGHT = 200
+const TILE_SIZE  = 2
+const MAP_OFFSET = Vector2(0, 60)
 
 # --- COSTS ---
 const COST_GRASS      = 3
@@ -70,14 +70,19 @@ var predator_texture: Texture2D
 var apex_texture: Texture2D
 
 func _ready() -> void:
+	# Fill the screen: calculate map size from actual window dimensions
+	var screen := DisplayServer.screen_get_size()
+	MAP_WIDTH  = screen.x / TILE_SIZE
+	MAP_HEIGHT = (screen.y - 120) / TILE_SIZE  # leave 120px for UI at top
+
 	var canvas = get_node_or_null("CanvasLayer")
 	if canvas != null:
 		var hbox = canvas.get_node_or_null("HBoxContainer")
 		if hbox != null:
-			hbox.position = Vector2(120, 800)
+			hbox.position = Vector2(screen.x / 2 - 300, screen.y - 55)
 		var btn = canvas.get_node_or_null("RestartButton")
 		if btn != null:
-			btn.position = Vector2(400, 390)
+			btn.position = Vector2(screen.x / 2 - 150, screen.y / 2 - 25)
 	_init_grid()
 	update_button_visuals()
 	update_ui()
