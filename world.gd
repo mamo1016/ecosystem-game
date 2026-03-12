@@ -23,7 +23,7 @@ const COLOR_MATURE   = Color(0.04, 0.50, 0.12)
 # --- MAP ---
 const MAP_WIDTH  = 150
 const MAP_HEIGHT = 130
-const TILE_SIZE  = 6
+const TILE_SIZE  = 1
 const MAP_OFFSET = Vector2(0, 8)
 
 # --- COSTS ---
