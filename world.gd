@@ -74,8 +74,7 @@ const VISION_RANGE    = 30
 const APEX_SCAN_RANGE = 30
 
 # --- THIRST ---
-const THIRST_LIMIT  = 200  # ticks before dying of thirst (20s)
-const THIRST_DANGER = 140  # ticks before animal seeks water (14s)
+const THIRST_DANGER = 140  # ticks before animal slows down and seeks water
 
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN   = 80
@@ -558,12 +557,14 @@ func run_predator_logic() -> void:
 					set_tile(poop, MATURE)
 
 			var moved = false
-			# River slows movement: 60% chance to skip move when in river
+			# River: drink and slow down
 			if _in_river(p.pos):
-				p.thirst = 0  # drinking
+				p.thirst = 0
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
-			# Thirsty: rush to river
+			# Thirsty: slow down 50% and seek river
+			if not moved and p.thirst >= THIRST_DANGER and randf() < 0.5:
+				moved = true
 			if not moved and p.thirst >= THIRST_DANGER:
 				var river_diff_x: int = river_x + RIVER_WIDTH / 2 - p.pos.x
 				if river_diff_x != 0:
@@ -629,9 +630,9 @@ func run_predator_logic() -> void:
 			p.hunger += 1
 			p.age += 1
 			p.thirst += 1
-			if p.hunger >= STARVATION_LIMIT or p.age >= HERBIVORE_LIFESPAN or p.thirst >= THIRST_LIMIT: break
+			if p.hunger >= STARVATION_LIMIT or p.age >= HERBIVORE_LIFESPAN: break
 
-		if p.hunger < STARVATION_LIMIT and p.age < HERBIVORE_LIFESPAN and p.thirst < THIRST_LIMIT:
+		if p.hunger < STARVATION_LIMIT and p.age < HERBIVORE_LIFESPAN:
 			alive.append(p)
 	predators = alive
 func run_apex_logic() -> void:
@@ -674,8 +675,10 @@ func run_apex_logic() -> void:
 
 			var moved = false
 			if _in_river(a.pos):
-				a.thirst = 0  # drinking
-			# Thirsty: rush to river (overrides prey-chasing)
+				a.thirst = 0
+			# Thirsty: slow down 50% and seek river
+			if not moved and a.thirst >= THIRST_DANGER and randf() < 0.5:
+				moved = true
 			if not moved and a.thirst >= THIRST_DANGER:
 				var river_diff_x: int = river_x + RIVER_WIDTH / 2 - a.pos.x
 				if river_diff_x != 0:
@@ -724,9 +727,9 @@ func run_apex_logic() -> void:
 			a.hunger += 1
 			a.age += 1
 			a.thirst += 1
-			if a.hunger >= APEX_STARVATION or a.age >= APEX_LIFESPAN or a.thirst >= THIRST_LIMIT: break
+			if a.hunger >= APEX_STARVATION or a.age >= APEX_LIFESPAN: break
 
-		if a.hunger < APEX_STARVATION and a.age < APEX_LIFESPAN and a.thirst < THIRST_LIMIT:
+		if a.hunger < APEX_STARVATION and a.age < APEX_LIFESPAN:
 			alive.append(a)
 	apexes = alive
 
