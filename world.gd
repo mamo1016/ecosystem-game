@@ -60,7 +60,7 @@ const ANIMAL_SIZE    = 3
 
 # --- RED PREDATOR SETTINGS ---
 const BIRTH_SUCCESS_CHANCE  = 0.25
-const HERB_FOOD_TO_BREED    = 10   # stomach units needed to reproduce
+const HERB_FOOD_TO_BREED    = 200  # stomach units needed to reproduce
 const FULL_DURATION         = 300
 const STARVE_LIMIT          = 150
 const HERBIVORE_LIFESPAN    = 1000
