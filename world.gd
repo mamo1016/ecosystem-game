@@ -57,6 +57,7 @@ const COST_APEX_SPAWN = 30
 
 # --- RED PREDATOR SETTINGS ---
 const PLANTS_TO_REPRODUCE = 6
+const BIRTH_SUCCESS_CHANCE = 0.6  # 60% chance to successfully give birth
 const STARVATION_LIMIT    = 150
 const EAT_TURNS           = 3
 const MATURE_EAT_TURNS    = 4
@@ -573,7 +574,10 @@ func run_predator_logic() -> void:
 						p.size += 1
 						needed_food = p.size * 10
 					else:
-						_try_spawn_offspring(p.pos, alive, p.size)
+						if randf() < BIRTH_SUCCESS_CHANCE:
+							_try_spawn_offspring(p.pos, alive, p.size)
+						else:
+							p.stomach = 0  # failed birth, reset counter
 
 			# Poop in goal zone if carrying food
 			if _in_goal_zone(p.pos) and p.stomach > 0:
