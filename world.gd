@@ -381,7 +381,8 @@ func _find_poop_target(from: Vector2i) -> Vector2i:
 		var tx: int = randi_range(0, MAP_WIDTH - 1)
 		var ty: int = randi_range(0, MAP_HEIGHT - 1)
 		var t := Vector2i(tx, ty)
-		if abs(tx - from.x) + abs(ty - from.y) >= POOP_MIN_DIST and get_tile(t) == EMPTY and not _in_river(t):
+		var tt: int = get_tile(t)
+		if abs(tx - from.x) + abs(ty - from.y) >= POOP_MIN_DIST and (tt == EMPTY or tt == GRASS) and not _in_river(t):
 			return t
 	return Vector2i(-1, -1)
 
@@ -599,7 +600,8 @@ func run_predator_logic() -> void:
 
 			# Poop: when full and reached poop target
 			if p.is_full and p.poop_target != Vector2i(-1, -1):
-				if get_tile(p.poop_target) != EMPTY:
+				var pt: int = get_tile(p.poop_target)
+				if pt != EMPTY and pt != GRASS:
 					p.poop_target = _find_poop_target(p.pos)
 				elif p.pos == p.poop_target or (abs(p.pos.x - p.poop_target.x) <= 1 and abs(p.pos.y - p.poop_target.y) <= 1):
 					set_tile(p.poop_target, DUNG)
