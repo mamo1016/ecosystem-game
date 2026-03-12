@@ -438,124 +438,111 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, parent_size: int) -
 		if new_pos.x >= 0 and new_pos.y >= 0 and new_pos.x + 15 <= MAP_WIDTH and new_pos.y + 15 <= MAP_HEIGHT:
 			list.append({ "pos": new_pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": d, "size": 15 })
 			return
-
 func run_predator_logic() -> void:
 	var alive = []
 	for p in predators:
 		if p.hunger >= STARVATION_LIMIT: continue
 
-		var move_timer = p.get("move_cooldown", 0)
-		if move_timer > 0:
-			p.move_cooldown = move_timer - 1
+		# 4x movement loop
+		for i in range(4):
+			var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
+			if eaten_count > 0:
+				p.stomach += eaten_count
+				p.hunger = 0
+				var needed_food = p.size * 10
+				while p.stomach >= needed_food:
+					p.stomach -= needed_food
+					if p.size < 35:
+						p.size += 10
+						needed_food = p.size * 10
+					else:
+						_try_spawn_offspring(p.pos, alive, p.size)
+
+			var moved = false
+			var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
+			if p.facing == Vector2i(1, 0): front_rect = Rect2i(p.pos.x + p.size, p.pos.y, VISION_RANGE, p.size)
+			elif p.facing == Vector2i(-1, 0): front_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y, VISION_RANGE, p.size)
+			elif p.facing == Vector2i(0, 1): front_rect = Rect2i(p.pos.x, p.pos.y + p.size, p.size, VISION_RANGE)
+			elif p.facing == Vector2i(0, -1): front_rect = Rect2i(p.pos.x, p.pos.y - VISION_RANGE, p.size, VISION_RANGE)
+
+			if _find_plant_in_rect(front_rect) != Vector2i(-1, -1):
+				if _try_move(p, p.facing): moved = true
+
+			if not moved:
+				var wander = DIRS.duplicate()
+				wander.shuffle()
+				for d in wander:
+					if _try_move(p, d):
+						p.facing = d
+						moved = true
+						break
+			
 			p.hunger += 1
+			if p.hunger >= STARVATION_LIMIT: break
+
+		if p.hunger < STARVATION_LIMIT:
 			alive.append(p)
-			continue
-
-		var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
-		if eaten_count > 0:
-			p.stomach += eaten_count
-			p.hunger = 0
-			var needed_food = p.size * 10
-			while p.stomach >= needed_food:
-				p.stomach -= needed_food
-				if p.size < 35:
-					p.size += 10
-					needed_food = p.size * 10
-				else:
-					_try_spawn_offspring(p.pos, alive, p.size)
-
-		var moved = false
-		var front_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
-		if p.facing == Vector2i(1, 0): front_rect = Rect2i(p.pos.x + p.size, p.pos.y, VISION_RANGE, p.size)
-		elif p.facing == Vector2i(-1, 0): front_rect = Rect2i(p.pos.x - VISION_RANGE, p.pos.y, VISION_RANGE, p.size)
-		elif p.facing == Vector2i(0, 1): front_rect = Rect2i(p.pos.x, p.pos.y + p.size, p.size, VISION_RANGE)
-		elif p.facing == Vector2i(0, -1): front_rect = Rect2i(p.pos.x, p.pos.y - VISION_RANGE, p.size, VISION_RANGE)
-
-		if _find_plant_in_rect(front_rect) != Vector2i(-1, -1):
-			if _try_move(p, p.facing): moved = true
-
-		if not moved:
-			var wander = DIRS.duplicate()
-			wander.shuffle()
-			for d in wander:
-				if _try_move(p, d):
-					p.facing = d
-					moved = true
-					break
-
-		if moved:
-			p.move_cooldown = 2
-
-		p.hunger += 1
-		alive.append(p)
 	predators = alive
-
 func run_apex_logic() -> void:
 	var alive = []
 	for a in apexes:
 		if a.hunger >= APEX_STARVATION: continue
 
-		var move_timer = a.get("move_cooldown", 0)
-		if move_timer > 0:
-			a.move_cooldown = move_timer - 1
-			a.hunger += 1
-			alive.append(a)
-			continue
-
-		var my_rect = Rect2i(a.pos.x, a.pos.y, a.size, a.size)
-		for i in range(predators.size() - 1, -1, -1):
-			var p_rect = Rect2i(predators[i].pos.x, predators[i].pos.y, predators[i].size, predators[i].size)
-			if my_rect.intersects(p_rect):
-				predators.remove_at(i)
-				a.stomach += 1
-				a.hunger = 0
-				var needed_food = a.size
-				while a.stomach >= needed_food:
-					a.stomach -= needed_food
-					if a.size < 35:
-						a.size += 10
-						needed_food = a.size
-					else:
-						_try_spawn_offspring(a.pos, alive, a.size)
-				break
-
-
-		var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, a.size + APEX_SCAN_RANGE * 2, a.size + APEX_SCAN_RANGE * 2)
-		var best_p = null
-		var best_dist = 9999
-		for p in predators:
-			var p_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
-			if view_rect.intersects(p_rect):
-				var dist = abs(p.pos.x - a.pos.x) + abs(p.pos.y - a.pos.y)
-				if dist < best_dist:
-					best_dist = dist
-					best_p = p
-
-		var moved = false
-		if best_p != null:
-			var diff = best_p.pos - a.pos
-			var step = Vector2i()
-			if abs(diff.x) >= abs(diff.y): step = Vector2i(signi(diff.x), 0)
-			else:                          step = Vector2i(0, signi(diff.y))
-			
-			if _try_move(a, step):
-				a.facing = step
-				moved = true
-
-		if not moved:
-			var wander = DIRS.duplicate()
-			wander.shuffle()
-			for d in wander:
-				if _try_move(a, d):
-					a.facing = d
-					moved = true
+		# 4x movement loop
+		for i in range(4):
+			var my_rect = Rect2i(a.pos.x, a.pos.y, a.size, a.size)
+			for j in range(predators.size() - 1, -1, -1):
+				var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, predators[j].size, predators[j].size)
+				if my_rect.intersects(p_rect):
+					predators.remove_at(j)
+					a.stomach += 1
+					a.hunger = 0
+					var needed_food = a.size
+					while a.stomach >= needed_food:
+						a.stomach -= needed_food
+						if a.size < 35:
+							a.size += 10
+							needed_food = a.size
+						else:
+							_try_spawn_offspring(a.pos, alive, a.size)
 					break
 
-		if moved:
-			a.move_cooldown = 2
+			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, a.size + APEX_SCAN_RANGE * 2, a.size + APEX_SCAN_RANGE * 2)
+			var best_p = null
+			var best_dist = 9999
+			for p in predators:
+				var p_rect = Rect2i(p.pos.x, p.pos.y, p.size, p.size)
+				if view_rect.intersects(p_rect):
+					var dist = abs(p.pos.x - a.pos.x) + abs(p.pos.y - a.pos.y)
+					if dist < best_dist:
+						best_dist = dist
+						best_p = p
 
-		a.hunger += 1
-		alive.append(a)
+			var moved = false
+			if best_p != null:
+				var diff = best_p.pos - a.pos
+				var step = Vector2i()
+				if abs(diff.x) >= abs(diff.y): step = Vector2i(signi(diff.x), 0)
+				else:                          step = Vector2i(0, signi(diff.y))
+				
+				if _try_move(a, step):
+					a.facing = step
+					moved = true
+
+			if not moved:
+				var wander = DIRS.duplicate()
+				wander.shuffle()
+				for d in wander:
+					if _try_move(a, d):
+						a.facing = d
+						moved = true
+						break
+
+			a.hunger += 1
+			if a.hunger >= APEX_STARVATION: break
+
+		if a.hunger < APEX_STARVATION:
+			alive.append(a)
 	apexes = alive
 
 func update_ui() -> void:
