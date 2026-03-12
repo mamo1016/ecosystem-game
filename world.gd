@@ -119,6 +119,7 @@ class Animal:
 	var full_timer: int      = 0   # ticks since last meal; exceeds FULL_DURATION → starving
 	var starve_timer: int    = 0   # ticks while starving; exceeds STARVE_LIMIT → dies
 	var age:        int      = 0
+	var eat_cd:     int      = 0   # eating cooldown ticks
 	var scan_cd:    int      = 0
 	var target:     Vector2i = Vector2i(-1, -1)
 	var facing:     Vector2i = Vector2i.ZERO
@@ -570,6 +571,9 @@ func run_predator_logic() -> void:
 					set_tile(poop, MATURE)
 
 			var moved = false
+			# Herbivores are slightly slower than hunters (20% skip)
+			if randf() < 0.2:
+				moved = true
 			# Flee from nearest apex within 15 tiles (highest priority)
 			if not moved:
 				for a in apexes:
@@ -663,18 +667,22 @@ func run_apex_logic() -> void:
 
 		# 4x movement loop
 		for i in range(1):
+			if a.eat_cd > 0:
+				a.eat_cd -= 1
 			var my_rect = Rect2i(a.pos.x, a.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
-			for j in range(predators.size() - 1, -1, -1):
-				var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
-				if my_rect.intersects(p_rect):
-					predators.remove_at(j)
-					a.stomach += 1
-					a.is_full = true
-					a.full_timer = 0
-					while a.stomach >= APEX_FOOD_TO_BREED:
-						a.stomach -= APEX_FOOD_TO_BREED
-						_try_spawn_offspring(a.pos, alive, a.home)
-					break
+			if a.eat_cd == 0:
+				for j in range(predators.size() - 1, -1, -1):
+					var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
+					if my_rect.intersects(p_rect):
+						predators.remove_at(j)
+						a.stomach += 1
+						a.is_full = true
+						a.full_timer = 0
+						a.eat_cd = 50  # 5 seconds at 10 ticks/sec
+						while a.stomach >= APEX_FOOD_TO_BREED:
+							a.stomach -= APEX_FOOD_TO_BREED
+							_try_spawn_offspring(a.pos, alive, a.home)
+						break
 
 			var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
 			var best_p = null
