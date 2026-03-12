@@ -200,6 +200,8 @@ func _draw() -> void:
 	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color.YELLOW, false, 2.0)
 
 func _draw_animal(animal: Dictionary, color: Color, texture: Texture2D, starvation_limit: int) -> void:
+	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + animal.size > MAP_WIDTH or animal.pos.y + animal.size > MAP_HEIGHT:
+		return
 	var px: float = MAP_OFFSET.x + animal.pos.x * TILE_SIZE
 	var py: float = MAP_OFFSET.y + animal.pos.y * TILE_SIZE
 	var w: float = animal.size * TILE_SIZE
