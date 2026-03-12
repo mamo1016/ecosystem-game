@@ -370,8 +370,6 @@ func _count_goal_plants() -> int:
 	return count
 
 func run_simulation_step() -> void:
-	if predators.size() == 0 or randf() < 0.04: spawn_red_invader()
-	if predators.size() > 5 and randf() < 0.02: spawn_apex_invader()
 
 	run_plant_logic()
 	update_ui()
