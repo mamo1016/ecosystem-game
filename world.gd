@@ -550,7 +550,7 @@ func run_predator_logic() -> void:
 					set_tile(plant_pos, EMPTY)
 					p.stomach += 1
 					p.hunger = 0
-					p.eating = maxi(1, 10 / p.size)
+					p.eating = 3
 					var needed_food = p.size * 10
 					while p.stomach >= needed_food:
 						p.stomach -= needed_food
