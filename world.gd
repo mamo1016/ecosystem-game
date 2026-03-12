@@ -570,6 +570,17 @@ func run_predator_logic() -> void:
 					set_tile(poop, MATURE)
 
 			var moved = false
+			# Flee from nearest apex within 15 tiles (highest priority)
+			if not moved:
+				for a in apexes:
+					var dx: int = p.pos.x - a.pos.x
+					var dy: int = p.pos.y - a.pos.y
+					if abs(dx) <= 15 and abs(dy) <= 15:
+						var step := Vector2i(signi(dx), 0) if abs(dx) >= abs(dy) else Vector2i(0, signi(dy))
+						if _try_move(p, step):
+							p.facing = step
+							moved = true
+						break
 			# River slows movement: 60% chance to skip move when in river
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
