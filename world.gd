@@ -73,6 +73,9 @@ const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 200
 const APEX_LIFESPAN         = 2000
 
+const THIRST_DANGER = 600  # ticks before seeking water (~60s)
+const THIRST_LIMIT  = 800  # ticks before dying of thirst (~80s)
+
 # --- VISION ---
 const VISION_RANGE    = 12
 const APEX_SCAN_RANGE = 12
@@ -127,6 +130,7 @@ class Animal:
 	var target:       Vector2i = Vector2i(-1, -1)
 	var facing:       Vector2i = Vector2i.ZERO
 	var home:         Vector2i = Vector2i(-1, -1)
+	var thirst:       int      = 0
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -599,6 +603,16 @@ func run_predator_logic() -> void:
 							p.facing = step
 							moved = true
 						break
+			# Drink when in river
+			if _in_river(p.pos): p.thirst = 0
+			# Seek river when thirsty (overrides other movement)
+			if not moved and p.thirst >= THIRST_DANGER:
+				var rdx: int = river_x + RIVER_WIDTH / 2 - p.pos.x
+				if rdx != 0:
+					var step := Vector2i(signi(rdx), 0)
+					if _try_move(p, step):
+						p.facing = step
+						moved = true
 			# River slows movement: 60% chance to skip move when in river
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
@@ -677,10 +691,11 @@ func run_predator_logic() -> void:
 				p.is_full = false
 			if not p.is_full:
 				p.starve_timer += 1
+			p.thirst += 1
 			p.age += 1
-			if p.starve_timer >= STARVE_LIMIT or p.age >= HERBIVORE_LIFESPAN: break
+			if p.starve_timer >= STARVE_LIMIT or p.age >= HERBIVORE_LIFESPAN or p.thirst >= THIRST_LIMIT: break
 
-		if p.starve_timer < STARVE_LIMIT and p.age < HERBIVORE_LIFESPAN:
+		if p.starve_timer < STARVE_LIMIT and p.age < HERBIVORE_LIFESPAN and p.thirst < THIRST_LIMIT:
 			alive.append(p)
 	predators = alive
 func run_apex_logic() -> void:
@@ -741,6 +756,16 @@ func run_apex_logic() -> void:
 				if _try_move(a, step):
 					a.facing = step
 					moved = true
+			# Drink when in river
+			if _in_river(a.pos): a.thirst = 0
+			# Seek river when thirsty (overrides prey-chasing)
+			if not moved and a.thirst >= THIRST_DANGER:
+				var rdx: int = river_x + RIVER_WIDTH / 2 - a.pos.x
+				if rdx != 0:
+					var step := Vector2i(signi(rdx), 0)
+					if _try_move(a, step):
+						a.facing = step
+						moved = true
 			# River slows movement: 60% chance to skip move when in river
 			if _in_river(a.pos) and randf() < 0.6:
 				moved = true
@@ -784,10 +809,11 @@ func run_apex_logic() -> void:
 				a.is_full = false
 			if not a.is_full:
 				a.starve_timer += 1
+			a.thirst += 1
 			a.age += 1
-			if a.starve_timer >= APEX_STARVE_LIMIT or a.age >= APEX_LIFESPAN: break
+			if a.starve_timer >= APEX_STARVE_LIMIT or a.age >= APEX_LIFESPAN or a.thirst >= THIRST_LIMIT: break
 
-		if a.starve_timer < APEX_STARVE_LIMIT and a.age < APEX_LIFESPAN:
+		if a.starve_timer < APEX_STARVE_LIMIT and a.age < APEX_LIFESPAN and a.thirst < THIRST_LIMIT:
 			alive.append(a)
 	apexes = alive
 
