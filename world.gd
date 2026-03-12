@@ -75,12 +75,12 @@ const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 200
 
 const THIRST_DANGER = 600  # ticks before seeking water (~60s)
-const THIRST_LIMIT  = 800  # ticks before dying of thirst (~80s)
+const THIRST_LIMIT  = 1200  # ticks before dying of thirst (~80s)
 
 # --- VISION ---
 const VISION_RANGE    = 30
-const APEX_SCAN_RANGE = 40
-const SCAN_INTERVAL   = 5   # re-scan for target every N ticks
+const APEX_SCAN_RANGE = 10
+const SCAN_INTERVAL   = 100   # re-scan for target every N ticks
 const MAX_HERBIVORES  = 100  # population cap
 const MAX_APEXES      = 20
 
@@ -795,30 +795,27 @@ func run_apex_logic() -> void:
 					a.facing = step
 					moved = true
 
-			if not moved:
-				# Return to territory when no prey visible and outside 30x30 home zone
-				if best_p == null and a.home != Vector2i(-1, -1):
-					var territory = Rect2i(a.home.x - 15, a.home.y - 15, 30, 30)
-					if not territory.has_point(a.pos):
-						var home_center = a.home + Vector2i(15, 15)
-						var diff = home_center - a.pos
-						var step = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
-						if _try_move(a, step):
-							a.facing = step
-							moved = true
-				if not moved:
-					# Try to keep current direction first
-					if _try_move(a, a.facing):
+			# No prey visible: return to home
+			if not moved and best_p == null and a.home != Vector2i(-1, -1):
+				var home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
+				if home_dist > 3:
+					var diff: Vector2i = a.home - a.pos
+					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
+					if _try_move(a, step):
+						a.facing = step
 						moved = true
-					else:
-						# Only change direction when actually blocked
-						var wander = DIRS.duplicate()
-						wander.shuffle()
-						for d in wander:
-							if _try_move(a, d):
-								a.facing = d
-								moved = true
-								break
+			# Wander when at home or can't move
+			if not moved:
+				if _try_move(a, a.facing):
+					moved = true
+				else:
+					var wander = DIRS.duplicate()
+					wander.shuffle()
+					for d in wander:
+						if _try_move(a, d):
+							a.facing = d
+							moved = true
+							break
 
 			a.full_timer += 1
 			if a.full_timer >= APEX_FULL_DURATION:
