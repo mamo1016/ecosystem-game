@@ -592,8 +592,8 @@ func run_predator_logic() -> void:
 				var repulse := Vector2i(0, 0)
 				for other in predators:
 					if other == p: continue
-					var dx := p.pos.x - other.pos.x
-					var dy := p.pos.y - other.pos.y
+					var dx: int = p.pos.x - other.pos.x
+					var dy: int = p.pos.y - other.pos.y
 					if abs(dx) <= 3 and abs(dy) <= 3:
 						repulse += Vector2i(signi(dx), signi(dy))
 				if repulse != Vector2i(0, 0):
