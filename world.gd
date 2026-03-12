@@ -57,13 +57,13 @@ const COST_APEX_SPAWN = 30
 
 # --- RED PREDATOR SETTINGS ---
 const PLANTS_TO_REPRODUCE = 6
-const STARVATION_LIMIT    = 50
+const STARVATION_LIMIT    = 150
 const EAT_TURNS           = 3
 const MATURE_EAT_TURNS    = 4
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_REPRODUCE  = 3
-const APEX_STARVATION = 120
+const APEX_STARVATION = 360
 const APEX_EAT_TURNS  = 3
 
 # --- VISION ---
@@ -508,7 +508,7 @@ func run_predator_logic() -> void:
 		if p.hunger >= STARVATION_LIMIT: continue
 
 		# 4x movement loop
-		for i in range(4):
+		for i in range(2):
 			var eaten_count = _eat_all_plants_in_rect(Rect2i(p.pos.x, p.pos.y, p.size, p.size))
 			if eaten_count > 0:
 				p.stomach += eaten_count
@@ -556,7 +556,7 @@ func run_apex_logic() -> void:
 		if a.hunger >= APEX_STARVATION: continue
 
 		# 4x movement loop
-		for i in range(4):
+		for i in range(2):
 			var my_rect = Rect2i(a.pos.x, a.pos.y, a.size, a.size)
 			for j in range(predators.size() - 1, -1, -1):
 				var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, predators[j].size, predators[j].size)
