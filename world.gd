@@ -39,6 +39,16 @@ var MAP_WIDTH  = 640
 var MAP_HEIGHT = 360
 const TILE_SIZE  = 2
 const MAP_OFFSET = Vector2(0, 40)
+const PLANT_ZONE_MARGIN = 0.22  # 22% margin on each side — center 56% is plantable
+
+const COLOR_ARID_VARIANTS = [
+	Color(0.52, 0.43, 0.36),  # gray-brown
+	Color(0.47, 0.38, 0.30),  # dark rust
+	Color(0.58, 0.44, 0.33),  # rusty tan
+	Color(0.44, 0.37, 0.32),  # cool gray
+	Color(0.55, 0.41, 0.28),  # rust ochre
+	Color(0.42, 0.35, 0.28),  # deep rust
+]
 
 # --- COSTS ---
 const COST_GRASS      = 3
@@ -148,8 +158,13 @@ func _draw() -> void:
 			var tile_id: int = grid[x][y]
 
 			if tile_id == EMPTY:
-				var desert_idx = (x * 7 + y * 11 + (x ^ y) * 3) % 6
-				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), COLOR_DESERT_VARIANTS[desert_idx])
+				var hash_idx = (x * 7 + y * 11 + (x ^ y) * 3) % 6
+				var empty_color: Color
+				if _in_plant_zone(Vector2i(x, y)):
+					empty_color = COLOR_DESERT_VARIANTS[hash_idx]
+				else:
+					empty_color = COLOR_ARID_VARIANTS[hash_idx]
+				draw_rect(Rect2(px, py, TILE_SIZE, TILE_SIZE), empty_color)
 			elif tile_id == GRASS:
 				var pos := Vector2i(x, y)
 				# Desert base under growing grass
@@ -198,6 +213,15 @@ func _draw() -> void:
 	for a in apexes:    _draw_animal(a, COLOR_APEX,     apex_texture,     APEX_STARVATION)
 
 	draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color.YELLOW, false, 2.0)
+	# Draw plant zone border
+	var zx0 := int(MAP_WIDTH  * PLANT_ZONE_MARGIN)
+	var zy0 := int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
+	var zx1 := int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
+	var zy1 := int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
+	draw_rect(
+		Rect2(MAP_OFFSET.x + zx0 * TILE_SIZE, MAP_OFFSET.y + zy0 * TILE_SIZE,
+			  (zx1 - zx0) * TILE_SIZE, (zy1 - zy0) * TILE_SIZE),
+		Color(0.9, 0.8, 0.4, 0.5), false, 1.0)
 
 func _draw_animal(animal: Dictionary, color: Color, texture: Texture2D, starvation_limit: int) -> void:
 	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + animal.size > MAP_WIDTH or animal.pos.y + animal.size > MAP_HEIGHT:
@@ -301,6 +325,13 @@ func _add_seeds(amount: int) -> void:
 func _is_plant(id: int) -> bool:
 	return id == GRASS or id == SUPER or id == MATURE
 
+func _in_plant_zone(pos: Vector2i) -> bool:
+	var x0 := int(MAP_WIDTH  * PLANT_ZONE_MARGIN)
+	var y0 := int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
+	var x1 := int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
+	var y1 := int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
+	return pos.x >= x0 and pos.x < x1 and pos.y >= y0 and pos.y < y1
+
 func run_simulation_step() -> void:
 	if predators.size() == 0 or randf() < 0.04: spawn_red_invader()
 	if predators.size() > 5 and randf() < 0.02: spawn_apex_invader()
@@ -342,21 +373,23 @@ func plant_seed(tile_id: int) -> void:
 		apexes.append({ "pos": pos, "stomach": 0, "hunger": 0, "eating": 0, "facing": DIRS.pick_random(), "size": 15 })
 		available_seeds -= cost
 	elif tile_id == GRASS:
+		if not _in_plant_zone(center): return
 		var placed = false
 		for dx in range(-5, 5):
 			for dy in range(-5, 5):
 				var pos = Vector2i(center.x + dx, center.y + dy)
-				if get_tile(pos) == EMPTY:
+				if get_tile(pos) == EMPTY and _in_plant_zone(pos):
 					set_tile(pos, MATURE)
 					placed = true
 		if placed:
 			available_seeds -= cost
 	elif tile_id == SUPER:
+		if not _in_plant_zone(center): return
 		var placed = false
 		for dx in range(-5, 5):
 			for dy in range(-5, 5):
 				var pos = Vector2i(center.x + dx, center.y + dy)
-				if get_tile(pos) == EMPTY:
+				if get_tile(pos) == EMPTY and _in_plant_zone(pos):
 					set_tile(pos, SUPER)
 					plant_ages[pos] = 0
 					placed = true
