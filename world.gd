@@ -466,7 +466,7 @@ func run_plant_logic() -> void:
 	for pos in mature_arr:
 		for d in DIRS:
 			var neighbor: Vector2i = pos + d
-			if get_tile(neighbor) == EMPTY and randf() < 0.05 and not _in_river(neighbor):
+			if get_tile(neighbor) == EMPTY and randf() < 0.01 and not _in_river(neighbor):
 				set_tile(neighbor, MATURE)
 				if randf() < 0.10: _add_seeds(1)
 
