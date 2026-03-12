@@ -80,7 +80,7 @@ const THIRST_LIMIT  = 600  # ticks before dying of thirst (60s)
 # --- VISION ---
 const VISION_RANGE    = 30
 const APEX_SCAN_RANGE = 40
-const SCAN_INTERVAL   = 100   # re-scan for target every N ticks
+const SCAN_INTERVAL   = 10   # re-scan for target every N ticks
 const MAX_HERBIVORES  = 100  # population cap
 const MAX_APEXES      = 20
 
@@ -596,8 +596,12 @@ func run_predator_logic() -> void:
 							_try_spawn_offspring(p.pos, alive)
 							p.stomach = 0
 						else:
-							p.is_full = true
-							p.poop_target = _find_poop_target(p.pos)
+							var pt: Vector2i = _find_poop_target(p.pos)
+							if pt != Vector2i(-1, -1):
+								p.is_full = true
+								p.poop_target = pt
+							else:
+								p.stomach = 0  # no poop spot found, just reset
 
 			# Poop: when full and reached poop target
 			if p.is_full and p.poop_target != Vector2i(-1, -1):
@@ -704,6 +708,7 @@ func run_predator_logic() -> void:
 				var diff: Vector2i = p.wander_target - p.pos
 				if abs(diff.x) + abs(diff.y) <= 2:
 					p.wander_target = Vector2i(-1, -1)
+					p.wander_cd = 0  # pick new destination immediately
 				else:
 					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
 					if _try_move(p, step):
