@@ -692,6 +692,7 @@ func run_predator_logic() -> void:
 						
 					p.stomach += 1
 					p.full_timer = 0
+					p.starve_timer = 0
 					# Poison genome: eating may hurt the herbivore
 					if genomes["poison"]["unlocked"] and randf() < 0.3:
 						p.thirst += 60
@@ -866,6 +867,7 @@ func run_apex_logic() -> void:
 						a.stomach += 1
 						a.eat_cd = 50
 						a.rest_timer = 100
+						a.starve_timer = 0
 						while a.stomach >= APEX_FOOD_TO_BREED:
 							a.stomach -= APEX_FOOD_TO_BREED
 							_try_spawn_offspring(a.pos, alive, a.home)
