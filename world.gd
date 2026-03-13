@@ -686,6 +686,7 @@ func run_predator_logic() -> void:
 					set_tile(plant_pos, EMPTY)
 					
 					if tile_type == POISON_PLANT:
+						print("[DEATH] Herbivore: Poison at ", p.pos)
 						p.starve_timer = STARVE_LIMIT + 1 # Instant death
 						continue
 						
@@ -826,10 +827,10 @@ func run_predator_logic() -> void:
 				p.starve_timer += 1
 			p.thirst += 1
 			if p.starve_timer >= STARVE_LIMIT:
-				print("Herbivore despawn: STARVATION at ", p.pos)
+				print("[DEATH] Herbivore: Starvation at ", p.pos)
 				break
 			if p.thirst >= THIRST_LIMIT:
-				print("Herbivore despawn: THIRST at ", p.pos)
+				print("[DEATH] Herbivore: Thirst at ", p.pos)
 				break
 
 		if p.starve_timer < STARVE_LIMIT and p.thirst < THIRST_LIMIT:
@@ -932,8 +933,12 @@ func run_apex_logic() -> void:
 
 			a.starve_timer += 1
 			a.thirst += 1
-			if a.starve_timer >= APEX_STARVE_LIMIT: break
-			if a.thirst >= THIRST_LIMIT: break
+			if a.starve_timer >= APEX_STARVE_LIMIT:
+				print("[DEATH] Apex: Starvation at ", a.pos)
+				break
+			if a.thirst >= THIRST_LIMIT:
+				print("[DEATH] Apex: Thirst at ", a.pos)
+				break
 
 		if a.starve_timer < APEX_STARVE_LIMIT and a.thirst < THIRST_LIMIT:
 			alive.append(a)
