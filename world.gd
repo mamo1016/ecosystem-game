@@ -134,8 +134,9 @@ var apexes: Array = []
 var plant_ages: Dictionary = {}
 var dung_ages:  Dictionary = {}
 var mature_set: Dictionary = {}
-var mature_list: Array[Vector2i] = []
-var mature_idx: Dictionary = {}
+var edge_list:  Array[Vector2i] = []
+var edge_set:   Dictionary = {}
+var edge_idx:   Dictionary = {}
 var plants_this_tick: int = 0
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
@@ -402,8 +403,9 @@ func _tile_colour(id: int) -> Color:
 func _init_grid() -> void:
 	grid = []
 	mature_set.clear()
-	mature_list.clear()
-	mature_idx.clear()
+	edge_list.clear()
+	edge_set.clear()
+	edge_idx.clear()
 	for x in range(MAP_WIDTH):
 		var col := []
 		col.resize(MAP_HEIGHT)
@@ -421,25 +423,45 @@ func get_tile(pos: Vector2i) -> int:
 
 func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
+	var old_id = items[pos.x][pos.y] if "items" in self else grid[pos.x][pos.y] # fallback to grid
 	grid[pos.x][pos.y] = id
 	if id == MATURE:
 		plants_this_tick += 1
-		if not mature_set.has(pos):
-			mature_idx[pos] = mature_list.size()
-			mature_list.append(pos)
-			mature_set[pos] = true
+		mature_set[pos] = true
 	else:
-		if mature_set.has(pos):
-			var idx: int = mature_idx[pos]
-			var last: Vector2i = mature_list[mature_list.size() - 1]
-			mature_list[idx] = last
-			mature_idx[last] = idx
-			mature_list.resize(mature_list.size() - 1)
-			mature_idx.erase(pos)
-			mature_set.erase(pos)
+		mature_set.erase(pos)
+	
+	_update_edge_status(pos)
+	for d in DIRS:
+		_update_edge_status(pos + d)
+		
 	if bg_image:
 		_paint_tile(pos.x, pos.y, _tile_pixel_color(pos.x, pos.y, id))
 		bg_dirty = true
+
+func _is_on_edge(pos: Vector2i) -> bool:
+	if not mature_set.has(pos): return false
+	for d in DIRS:
+		var n := pos + d
+		if get_tile(n) == EMPTY and not _in_river(n):
+			return true
+	return false
+
+func _update_edge_status(pos: Vector2i) -> void:
+	if _is_on_edge(pos):
+		if not edge_set.has(pos):
+			edge_idx[pos] = edge_list.size()
+			edge_list.append(pos)
+			edge_set[pos] = true
+	else:
+		if edge_set.has(pos):
+			var idx: int = edge_idx[pos]
+			var last: Vector2i = edge_list[edge_list.size() - 1]
+			edge_list[idx] = last
+			edge_idx[last] = idx
+			edge_list.resize(edge_list.size() - 1)
+			edge_idx.erase(pos)
+			edge_set.erase(pos)
 
 func _mouse_to_grid() -> Vector2i:
 	var mp := get_global_mouse_position()
@@ -487,7 +509,7 @@ func run_simulation_step() -> void:
 	plants_this_tick = 0
 	if herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04): spawn_red_invader()
 	run_plant_logic()
-	print("Plants spawned this tick: ", plants_this_tick)
+	print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
 	update_ui()
 	queue_redraw()
 	var life := _count_life()
@@ -540,11 +562,11 @@ func run_plant_logic() -> void:
 	# Apply genome effects to spread
 	var spread_prob: float = 0.10 if genomes["speed"]["unlocked"] else 0.05
 
-	var n := mature_list.size()
+	var n := edge_list.size()
 	if n > 0:
 		var count := mini(MAX_SPREAD_PER_TICK, n)
 		for i in range(count):
-			var pos: Vector2i = mature_list.pick_random()
+			var pos: Vector2i = edge_list.pick_random()
 			for d in DIRS:
 				var neighbor: Vector2i = pos + d
 				if get_tile(neighbor) == EMPTY and randf() < spread_prob and not _in_river(neighbor):
@@ -926,8 +948,9 @@ func _on_restart_button_pressed() -> void:
 	plant_ages.clear()
 	dung_ages.clear()
 	mature_set.clear()
-	mature_list.clear()
-	mature_idx.clear()
+	edge_list.clear()
+	edge_set.clear()
+	edge_idx.clear()
 	for gid in GENOME_IDS:
 		genomes[gid]["unlocked"] = false
 	_init_grid()
