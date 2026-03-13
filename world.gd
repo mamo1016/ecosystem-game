@@ -15,6 +15,7 @@ const DUNG     = 6
 const POISON_PLANT = 7
 const WATER = 8
 const STONE = 9
+const FAR_MATURE = 10
 
 # --- COLOURS ---
 const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
@@ -30,14 +31,9 @@ const COLOR_GRASS    = Color(0.25, 0.78, 0.18)
 const COLOR_PREDATOR = Color(0.90, 0.10, 0.10)
 const COLOR_SUPER    = Color(1.00, 0.88, 0.00)
 const COLOR_APEX     = Color(0.15, 0.35, 0.95)
-const COLOR_MATURE   = Color(0.04, 0.50, 0.12)
+const COLOR_MATURE   = Color(0.04, 0.45, 0.12)
+const COLOR_FAR_MATURE = Color(0.3, 0.9, 0.3)
 const COLOR_DUNG     = Color(0.45, 0.28, 0.10)
-const COLOR_MATURE_VARIANTS = [
-	Color(0.04, 0.50, 0.12),
-	Color(0.12, 0.68, 0.22),
-	Color(0.18, 0.38, 0.09),
-	Color(0.06, 0.55, 0.32),
-]
 const COLOR_POISON   = Color(0.6, 0.1, 0.8)
 const COLOR_WATER    = Color(0.1, 0.4, 0.9)
 const COLOR_STONE    = Color(0.5, 0.5, 0.5)
@@ -436,7 +432,8 @@ func _buy_genome(gid: String) -> void:
 
 func _tile_pixel_color(x: int, y: int, tile_id: int) -> Color:
 	match tile_id:
-		MATURE: return COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
+		MATURE: return COLOR_MATURE
+		FAR_MATURE: return COLOR_FAR_MATURE
 		SUPER:  return COLOR_SUPER
 		DUNG:   return COLOR_DUNG
 		POISON_PLANT: return COLOR_POISON
@@ -489,7 +486,7 @@ func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
 	if grid[pos.x][pos.y] == WATER or grid[pos.x][pos.y] == STONE: return 
 	grid[pos.x][pos.y] = id
-	if id == MATURE:
+	if id == MATURE or id == FAR_MATURE:
 		plants_this_tick += 1
 		mature_set[pos] = true
 	else:
@@ -578,7 +575,7 @@ func _add_seeds(amount: int) -> void:
 	available_seeds = mini(available_seeds + amount, SEED_CAP)
 
 func _is_plant(id: int) -> bool:
-	return id == GRASS or id == SUPER or id == MATURE or id == POISON_PLANT
+	return id == GRASS or id == SUPER or id == MATURE or id == FAR_MATURE or id == POISON_PLANT
 
 func _in_plant_zone(pos: Vector2i) -> bool:
 	return pos.x >= zone_x0 and pos.x < zone_x1 and pos.y >= zone_y0 and pos.y < zone_y1
@@ -677,16 +674,21 @@ func run_plant_logic() -> void:
 		var count := mini(MAX_SPREAD_PER_TICK, n)
 		for i in range(count):
 			var pos: Vector2i = edge_list.pick_random()
+			var current_tile = get_tile(pos)
+			
 			for d in DIRS:
 				var neighbor: Vector2i = pos + d
 				if get_tile(neighbor) == EMPTY and randf() < spread_prob and not _in_river(neighbor):
 					var next_id = MATURE
 					if genomes["poison"]["unlocked"] and randf() < 0.001:
 						next_id = POISON_PLANT
+					elif genomes["range"]["unlocked"] and randf() < 0.05:
+						next_id = FAR_MATURE
 					set_tile(neighbor, next_id)
 					if randf() < 0.10: _add_seeds(1)
-			# Far Spread genome: 1% chance to launch a seed 10-15 blocks away
-			if genomes["range"]["unlocked"] and randf() < 0.01:
+			
+			# Far Spread genome: Only FAR_MATURE can spread 10-15 blocks away (5% chance per tick)
+			if current_tile == FAR_MATURE and randf() < 0.05:
 				var fly_angle: float = randf() * TAU
 				var fly_dist: float = randf_range(10.0, 15.0)
 				var fly_pos := Vector2i(
