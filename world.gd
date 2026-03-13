@@ -16,6 +16,7 @@ const POISON_PLANT = 7
 const WATER = 8
 const STONE = 9
 const FAR_MATURE = 10
+const TREE = 11
 
 # --- COLOURS ---
 const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
@@ -33,6 +34,7 @@ const COLOR_SUPER    = Color(1.00, 0.88, 0.00)
 const COLOR_APEX     = Color(0.15, 0.35, 0.95)
 const COLOR_MATURE   = Color(0.04, 0.45, 0.12)
 const COLOR_FAR_MATURE = Color(0.3, 0.9, 0.3)
+const COLOR_TREE       = Color(0.5, 1.0, 0.0) # Bright neon green
 const COLOR_DUNG     = Color(0.45, 0.28, 0.10)
 const COLOR_POISON   = Color(0.6, 0.1, 0.8)
 const COLOR_WATER    = Color(0.1, 0.4, 0.9)
@@ -435,6 +437,7 @@ func _tile_pixel_color(x: int, y: int, tile_id: int) -> Color:
 	match tile_id:
 		MATURE: return COLOR_MATURE
 		FAR_MATURE: return COLOR_FAR_MATURE
+		TREE:   return COLOR_TREE
 		SUPER:  return COLOR_SUPER
 		DUNG:   return COLOR_DUNG
 		POISON_PLANT: return COLOR_POISON
@@ -487,7 +490,7 @@ func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
 	if grid[pos.x][pos.y] == WATER or grid[pos.x][pos.y] == STONE: return 
 	grid[pos.x][pos.y] = id
-	if id == MATURE or id == FAR_MATURE:
+	if id == MATURE or id == FAR_MATURE or id == TREE:
 		plants_this_tick += 1
 		mature_set[pos] = true
 	else:
@@ -576,7 +579,11 @@ func _add_seeds(amount: int) -> void:
 	available_seeds = mini(available_seeds + amount, SEED_CAP)
 
 func _is_plant(id: int) -> bool:
-	return id == GRASS or id == SUPER or id == MATURE or id == FAR_MATURE or id == POISON_PLANT
+	return id == GRASS or id == SUPER or id == MATURE or id == FAR_MATURE or id == POISON_PLANT or id == TREE
+
+func _is_edible_plant(id: int) -> bool:
+	if id == TREE: return false
+	return _is_plant(id)
 
 func _in_plant_zone(pos: Vector2i) -> bool:
 	return pos.x >= zone_x0 and pos.x < zone_x1 and pos.y >= zone_y0 and pos.y < zone_y1
@@ -681,15 +688,17 @@ func run_plant_logic() -> void:
 				var neighbor: Vector2i = pos + d
 				if get_tile(neighbor) == EMPTY and randf() < spread_prob and not _in_river(neighbor):
 					var next_id = MATURE
-					if genomes["poison"]["unlocked"] and randf() < 0.001:
+					if randf() < 0.001:
+						next_id = TREE # 0.1% chance for Tree
+					elif genomes["poison"]["unlocked"] and randf() < 0.001:
 						next_id = POISON_PLANT
 					elif genomes["range"]["unlocked"] and randf() < 0.05:
 						next_id = FAR_MATURE
 					set_tile(neighbor, next_id)
 					if randf() < 0.10: _add_seeds(1)
 			
-			# Far Spread genome: Only FAR_MATURE can spread 10-15 blocks away (5% chance per tick)
-			if current_tile == FAR_MATURE and randf() < 0.05:
+			# Tree & Far Spread behavior: Far jump (10-15 blocks)
+			if (current_tile == TREE or current_tile == FAR_MATURE) and randf() < 0.05:
 				var fly_angle: float = randf() * TAU
 				var fly_dist: float = randf_range(10.0, 15.0)
 				var fly_pos := Vector2i(
@@ -738,7 +747,7 @@ func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var found = []
 	for x in range(start_x, end_x):
 		for y in range(start_y, end_y):
-			if _is_plant(grid[x][y]):
+			if _is_edible_plant(grid[x][y]):
 				found.append(Vector2i(x, y))
 	if found.is_empty():
 		return Vector2i(-1, -1)
@@ -753,7 +762,7 @@ func _eat_all_plants_in_rect(rect: Rect2i) -> int:
 	for x in range(start_x, end_x):
 		for y in range(start_y, end_y):
 			var pos = Vector2i(x, y)
-			if _is_plant(grid[x][y]):
+			if _is_edible_plant(grid[x][y]):
 				_erase_plant_data(pos)
 				set_tile(pos, EMPTY)
 				eaten_count += 1
