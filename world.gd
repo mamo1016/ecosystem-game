@@ -12,6 +12,7 @@ const SUPER    = 3
 const SEED_APEX= 4
 const MATURE   = 5
 const DUNG     = 6
+const POISON_PLANT = 7
 
 # --- COLOURS ---
 const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
@@ -35,6 +36,7 @@ const COLOR_MATURE_VARIANTS = [
 	Color(0.18, 0.38, 0.09),
 	Color(0.06, 0.55, 0.32),
 ]
+const COLOR_POISON   = Color(0.6, 0.1, 0.8)
 
 # --- MAP ---
 var MAP_WIDTH  = 640
@@ -378,6 +380,7 @@ func _tile_pixel_color(x: int, y: int, tile_id: int) -> Color:
 		MATURE: return COLOR_MATURE_VARIANTS[(x * 7 + y * 13) % 4]
 		SUPER:  return COLOR_SUPER
 		DUNG:   return COLOR_DUNG
+		POISON_PLANT: return COLOR_POISON
 		_:
 			var hash_idx: int = (x * 7 + y * 11 + (x ^ y) * 3) % 6
 			if x < zone_x0 or x >= zone_x1 or y < zone_y0 or y >= zone_y1:
@@ -473,7 +476,7 @@ func _add_seeds(amount: int) -> void:
 	available_seeds = mini(available_seeds + amount, SEED_CAP)
 
 func _is_plant(id: int) -> bool:
-	return id == GRASS or id == SUPER or id == MATURE
+	return id == GRASS or id == SUPER or id == MATURE or id == POISON_PLANT
 
 func _in_plant_zone(pos: Vector2i) -> bool:
 	return pos.x >= zone_x0 and pos.x < zone_x1 and pos.y >= zone_y0 and pos.y < zone_y1
@@ -570,7 +573,10 @@ func run_plant_logic() -> void:
 			for d in DIRS:
 				var neighbor: Vector2i = pos + d
 				if get_tile(neighbor) == EMPTY and randf() < spread_prob and not _in_river(neighbor):
-					set_tile(neighbor, MATURE)
+					var next_id = MATURE
+					if genomes["poison"]["unlocked"] and randf() < 0.001:
+						next_id = POISON_PLANT
+					set_tile(neighbor, next_id)
 					if randf() < 0.10: _add_seeds(1)
 			# Far Spread genome: 1% chance to launch a seed 10-15 blocks away
 			if genomes["range"]["unlocked"] and randf() < 0.01:
@@ -675,8 +681,14 @@ func run_predator_logic() -> void:
 			if not p.is_full:
 				var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE))
 				if plant_pos != Vector2i(-1, -1):
+					var tile_type = get_tile(plant_pos)
 					_erase_plant_data(plant_pos)
 					set_tile(plant_pos, EMPTY)
+					
+					if tile_type == POISON_PLANT:
+						p.starve_timer = STARVE_LIMIT + 1 # Instant death
+						continue
+						
 					p.stomach += 1
 					p.full_timer = 0
 					# Poison genome: eating may hurt the herbivore
@@ -783,7 +795,7 @@ func run_predator_logic() -> void:
 
 			p.wander_cd -= 1
 			if p.wander_cd <= 0:
-				p.wander_cd = 100
+				p.wander_cd = 400
 				var angle: float = randf() * TAU
 				var wx: int = clampi(p.pos.x + int(cos(angle) * 20), 0, MAP_WIDTH - 1)
 				var wy: int = clampi(p.pos.y + int(sin(angle) * 20), 0, MAP_HEIGHT - 1)
