@@ -717,6 +717,15 @@ func run_predator_logic() -> void:
 					p.stomach = 0
 					p.is_full = false
 					p.poop_target = Vector2i(-1, -1)
+					# Migration: Force move away from the poop so the plant can actually grow
+					var angle: float = randf() * TAU
+					var dist: int = randi_range(30, 45)
+					p.wander_target = Vector2i(
+						clampi(p.pos.x + int(cos(angle) * dist), 0, MAP_WIDTH - 1),
+						clampi(p.pos.y + int(sin(angle) * dist), 0, MAP_HEIGHT - 1)
+					)
+					p.wander_cd = 400
+					p.target = Vector2i(-1, -1)
 
 			var moved := false
 			if randf() < 0.2:
