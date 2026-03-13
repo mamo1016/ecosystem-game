@@ -34,7 +34,7 @@ const COLOR_SUPER    = Color(1.00, 0.88, 0.00)
 const COLOR_APEX     = Color(0.15, 0.35, 0.95)
 const COLOR_MATURE   = Color(0.04, 0.45, 0.12)
 const COLOR_FAR_MATURE = Color(0.3, 0.9, 0.3)
-const COLOR_TREE       = Color(0.5, 1.0, 0.0) # Bright neon green
+const COLOR_TREE       = Color(0.0, 0.3, 0.0) # Deep forest green
 const COLOR_DUNG     = Color(0.45, 0.28, 0.10)
 const COLOR_POISON   = Color(0.6, 0.1, 0.8)
 const COLOR_WATER    = Color(0.1, 0.4, 0.9)
@@ -828,7 +828,7 @@ func run_predator_logic() -> void:
 						
 					p.stomach += 1
 					p.full_timer = 0
-					p.starve_timer = max(0, p.starve_timer - 10)
+					p.starve_timer = max(0, p.starve_timer - 1)
 					# Poison genome: eating may hurt the herbivore
 					if genomes["poison"]["unlocked"] and randf() < 0.3:
 						p.thirst += 60
