@@ -86,7 +86,7 @@ const MAX_APEXES      = 20
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN      = 80
 const SEED_CAP            = 300
-const MAX_SPREAD_PER_TICK = 1200
+const MAX_SPREAD_PER_TICK = 12000
 const GROWTH_PER_TICK     = 4
 var   update_interval     = 0.5
 
