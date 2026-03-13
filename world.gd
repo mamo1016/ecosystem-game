@@ -75,8 +75,8 @@ const DUNG_RIPEN_TICKS      = 200
 const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 500
 
-const THIRST_DANGER = 100
-const THIRST_LIMIT  = 300
+const THIRST_DANGER = 500
+const THIRST_LIMIT  = 1000
 
 # --- VISION ---
 const VISION_RANGE    = 60
@@ -167,6 +167,7 @@ class Animal:
 	var wander_cd:     int      = 0
 	var rest_timer:    int      = 0
 	var water_target:  Vector2i = Vector2i(-1, -1)
+	var move_wait:     int      = 0
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -762,11 +763,18 @@ func _try_move(animal: Animal, dir: Vector2i) -> bool:
 	var new_pos = animal.pos + dir
 	if new_pos.x < 0 or new_pos.y < 0 or new_pos.x + ANIMAL_SIZE > MAP_WIDTH or new_pos.y + ANIMAL_SIZE > MAP_HEIGHT:
 		return false
-	# Check for stones in the animal's new rect
+	
+	var on_stone := false
 	for x in range(new_pos.x, new_pos.x + ANIMAL_SIZE):
 		for y in range(new_pos.y, new_pos.y + ANIMAL_SIZE):
 			if grid[x][y] == STONE:
-				return false
+				on_stone = true
+				break
+		if on_stone: break
+	
+	if on_stone:
+		animal.move_wait = 4 # Substantial delay = very slow movement
+		
 	animal.pos = new_pos
 	return true
 
@@ -790,6 +798,11 @@ func run_predator_logic() -> void:
 	var alive = []
 	for p in predators:
 		if alive.size() >= MAX_HERBIVORES: break
+		
+		if p.move_wait > 0:
+			p.move_wait -= 1
+			alive.append(p)
+			continue
 
 		for i in range(1):
 			if not p.is_full:
@@ -989,6 +1002,11 @@ func run_apex_logic() -> void:
 	var alive = []
 	for a in apexes:
 		if alive.size() >= MAX_APEXES: break
+		
+		if a.move_wait > 0:
+			a.move_wait -= 1
+			alive.append(a)
+			continue
 
 		for i in range(1):
 			if a.eat_cd > 0:
