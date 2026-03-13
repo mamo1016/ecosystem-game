@@ -13,6 +13,7 @@ const SEED_APEX= 4
 const MATURE   = 5
 const DUNG     = 6
 const POISON_PLANT = 7
+const WATER = 8
 
 # --- COLOURS ---
 const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
@@ -37,6 +38,7 @@ const COLOR_MATURE_VARIANTS = [
 	Color(0.06, 0.55, 0.32),
 ]
 const COLOR_POISON   = Color(0.6, 0.1, 0.8)
+const COLOR_WATER    = Color(0.1, 0.4, 0.9)
 
 # --- MAP ---
 var MAP_WIDTH  = 640
@@ -166,6 +168,7 @@ class Animal:
 	var wander_target: Vector2i = Vector2i(-1, -1)
 	var wander_cd:     int      = 0
 	var rest_timer:    int      = 0
+	var water_target:  Vector2i = Vector2i(-1, -1)
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -388,6 +391,7 @@ func _tile_pixel_color(x: int, y: int, tile_id: int) -> Color:
 		SUPER:  return COLOR_SUPER
 		DUNG:   return COLOR_DUNG
 		POISON_PLANT: return COLOR_POISON
+		WATER:  return COLOR_WATER
 		_:
 			var hash_idx: int = (x * 7 + y * 11 + (x ^ y) * 3) % 6
 			if x < zone_x0 or x >= zone_x1 or y < zone_y0 or y >= zone_y1:
@@ -419,12 +423,15 @@ func _init_grid() -> void:
 	for x in range(MAP_WIDTH):
 		var col := []
 		col.resize(MAP_HEIGHT)
-		col.fill(EMPTY)
+		if x >= river_x and x < river_x + RIVER_WIDTH:
+			col.fill(WATER)
+		else:
+			col.fill(EMPTY)
 		grid.append(col)
 	if bg_image:
 		for x in range(MAP_WIDTH):
 			for y in range(MAP_HEIGHT):
-				_paint_tile(x, y, _tile_pixel_color(x, y, EMPTY))
+				_paint_tile(x, y, _tile_pixel_color(x, y, grid[x][y]))
 		bg_dirty = true
 
 func get_tile(pos: Vector2i) -> int:
@@ -433,6 +440,7 @@ func get_tile(pos: Vector2i) -> int:
 
 func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
+	if grid[pos.x][pos.y] == WATER: return # Water is permanent
 	grid[pos.x][pos.y] = id
 	if id == MATURE:
 		plants_this_tick += 1
@@ -532,7 +540,7 @@ func _in_goal_zone(pos: Vector2i) -> bool:
 	return pos.x >= goal_x and pos.x < goal_x + GOAL_SIZE and pos.y >= goal_y and pos.y < goal_y + GOAL_SIZE
 
 func _in_river(pos: Vector2i) -> bool:
-	return pos.x >= river_x and pos.x < river_x + RIVER_WIDTH
+	return get_tile(pos) == WATER
 
 func _find_poop_target(from: Vector2i) -> Vector2i:
 	for _i in range(30):
@@ -798,12 +806,15 @@ func run_predator_logic() -> void:
 			if _in_river(p.pos): p.thirst = 0
 			# Seek river when thirsty
 			if not moved and p.thirst >= THIRST_DANGER:
-				var rdx: int = river_x + RIVER_WIDTH / 2 - p.pos.x
-				if rdx != 0:
-					var thirst_step := Vector2i(signi(rdx), 0)
-					if _try_move(p, thirst_step):
-						p.facing = thirst_step
+				if p.water_target != Vector2i(-1, -1):
+					var w_diff: Vector2i = p.water_target - p.pos
+					var w_step: Vector2i = Vector2i(signi(w_diff.x), 0) if abs(w_diff.x) >= abs(w_diff.y) else Vector2i(0, signi(w_diff.y))
+					if _try_move(p, w_step):
+						p.facing = w_step
 						moved = true
+				else:
+					# If no water is seen, just wander randomly or continue current path
+					pass
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
 			if not moved:
@@ -825,24 +836,40 @@ func run_predator_logic() -> void:
 					p.facing = poop_step
 					moved = true
 
-			if p.is_full: p.scan_cd = 0
-			if p.scan_cd <= 0 and not p.is_full:
+			if p.scan_cd <= 0:
 				p.scan_cd = SCAN_INTERVAL
-				var best_plant := Vector2i(-1, -1)
-				var best_dist := 9999
 				var ppos: Vector2i = p.pos
 				var sx: int = max(0, ppos.x - VISION_RANGE)
 				var sy: int = max(0, ppos.y - VISION_RANGE)
 				var ex: int = min(MAP_WIDTH,  ppos.x + VISION_RANGE)
 				var ey: int = min(MAP_HEIGHT, ppos.y + VISION_RANGE)
+				
+				# Scan for plants if hungry
+				if not p.is_full:
+					var best_plant := Vector2i(-1, -1)
+					var best_dist := 9999
+					for bx in range(sx, ex):
+						for by in range(sy, ey):
+							if _is_plant(grid[bx][by]):
+								var d: int = abs(bx - ppos.x) + abs(by - ppos.y)
+								if d < best_dist:
+									best_dist = d
+									best_plant = Vector2i(bx, by)
+					p.target = best_plant
+				else:
+					p.target = Vector2i(-1, -1)
+
+				# Scan for water
+				var best_water := Vector2i(-1, -1)
+				var best_w_dist := 9999
 				for bx in range(sx, ex):
 					for by in range(sy, ey):
-						if _is_plant(grid[bx][by]):
+						if grid[bx][by] == WATER:
 							var d: int = abs(bx - ppos.x) + abs(by - ppos.y)
-							if d < best_dist:
-								best_dist = d
-								best_plant = Vector2i(bx, by)
-				p.target = best_plant
+							if d < best_w_dist:
+								best_w_dist = d
+								best_water = Vector2i(bx, by)
+				p.water_target = best_water
 			else:
 				p.scan_cd -= 1
 
@@ -941,17 +968,38 @@ func run_apex_logic() -> void:
 							best_dist = dist
 							best_p = p
 
+			if a.scan_cd <= 0:
+				a.scan_cd = SCAN_INTERVAL
+				var ppos: Vector2i = a.pos
+				var sx: int = max(0, ppos.x - VISION_RANGE)
+				var sy: int = max(0, ppos.y - VISION_RANGE)
+				var ex: int = min(MAP_WIDTH,  ppos.x + VISION_RANGE)
+				var ey: int = min(MAP_HEIGHT, ppos.y + VISION_RANGE)
+				var best_water := Vector2i(-1, -1)
+				var best_w_dist := 9999
+				for bx in range(sx, ex):
+					for by in range(sy, ey):
+						if grid[bx][by] == WATER:
+							var d: int = abs(bx - ppos.x) + abs(by - ppos.y)
+							if d < best_w_dist:
+								best_w_dist = d
+								best_water = Vector2i(bx, by)
+				a.water_target = best_water
+			else:
+				a.scan_cd -= 1
+
 			if best_p == null and a.rest_timer == 0 and randf() < 0.05:
 				a.facing = DIRS.pick_random()
 
 			var moved: bool = a.eat_cd > 0
 			if _in_river(a.pos): a.thirst = 0
+			# Seek river when thirsty
 			if not moved and a.thirst >= THIRST_DANGER:
-				var rdx: int = river_x + RIVER_WIDTH / 2 - a.pos.x
-				if rdx != 0:
-					var thirst_step := Vector2i(signi(rdx), 0)
-					if _try_move(a, thirst_step):
-						a.facing = thirst_step
+				if a.water_target != Vector2i(-1, -1):
+					var w_diff: Vector2i = a.water_target - a.pos
+					var w_step: Vector2i = Vector2i(signi(w_diff.x), 0) if abs(w_diff.x) >= abs(w_diff.y) else Vector2i(0, signi(w_diff.y))
+					if _try_move(a, w_step):
+						a.facing = w_step
 						moved = true
 			if _in_river(a.pos) and randf() < 0.6:
 				moved = true
