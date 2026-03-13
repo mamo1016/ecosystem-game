@@ -595,6 +595,15 @@ func _in_goal_zone(pos: Vector2i) -> bool:
 func _in_river(pos: Vector2i) -> bool:
 	return get_tile(pos) == WATER
 
+func _is_near_dung(pos: Vector2i) -> bool:
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var check_pos = pos + Vector2i(dx, dy)
+			if check_pos.x >= 0 and check_pos.x < MAP_WIDTH and check_pos.y >= 0 and check_pos.y < MAP_HEIGHT:
+				if grid[check_pos.x][check_pos.y] == DUNG:
+					return true
+	return false
+
 func _find_poop_target(from: Vector2i) -> Vector2i:
 	for _i in range(30):
 		var tx: int = clampi(from.x + randi_range(-10, 10), 0, MAP_WIDTH - 1)
@@ -755,8 +764,9 @@ func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var found = []
 	for x in range(start_x, end_x):
 		for y in range(start_y, end_y):
-			if _is_edible_plant(grid[x][y]):
-				found.append(Vector2i(x, y))
+			var p := Vector2i(x, y)
+			if _is_edible_plant(grid[x][y]) and not _is_near_dung(p):
+				found.append(p)
 	if found.is_empty():
 		return Vector2i(-1, -1)
 	return found.pick_random()
@@ -788,17 +798,6 @@ func _try_move(animal: Animal, dir: Vector2i) -> bool:
 				on_stone = true
 				break
 		if on_stone: break
-	
-	# Avoid poop 1 block away
-	var near_poop := false
-	for x in range(new_pos.x - 1, new_pos.x + ANIMAL_SIZE + 1):
-		for y in range(new_pos.y - 1, new_pos.y + ANIMAL_SIZE + 1):
-			if x >= 0 and x < MAP_WIDTH and y >= 0 and y < MAP_HEIGHT:
-				if grid[x][y] == DUNG:
-					near_poop = true
-					break
-		if near_poop: break
-	if near_poop: return false
 	
 	if on_stone:
 		animal.move_wait = 4 # Substantial delay = very slow movement
@@ -955,11 +954,12 @@ func run_predator_logic() -> void:
 					var best_dist := 9999
 					for bx in range(sx, ex):
 						for by in range(sy, ey):
-							if _is_plant(grid[bx][by]):
+							var bpos := Vector2i(bx, by)
+							if _is_edible_plant(grid[bx][by]) and not _is_near_dung(bpos):
 								var d: int = abs(bx - ppos.x) + abs(by - ppos.y)
 								if d < best_dist:
 									best_dist = d
-									best_plant = Vector2i(bx, by)
+									best_plant = bpos
 					p.target = best_plant
 				else:
 					p.target = Vector2i(-1, -1)
