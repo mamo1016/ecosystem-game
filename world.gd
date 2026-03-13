@@ -486,8 +486,8 @@ func _in_river(pos: Vector2i) -> bool:
 
 func _find_poop_target(from: Vector2i) -> Vector2i:
 	for _i in range(30):
-		var tx: int = randi_range(0, MAP_WIDTH - 1)
-		var ty: int = randi_range(0, MAP_HEIGHT - 1)
+		var tx: int = clampi(from.x + randi_range(-10, 10), 0, MAP_WIDTH - 1)
+		var ty: int = clampi(from.y + randi_range(-10, 10), 0, MAP_HEIGHT - 1)
 		var t := Vector2i(tx, ty)
 		var tt: int = get_tile(t)
 		if abs(tx - from.x) + abs(ty - from.y) >= POOP_MIN_DIST and (tt == EMPTY or tt == GRASS) and not _in_river(t):
