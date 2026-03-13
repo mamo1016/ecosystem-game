@@ -32,9 +32,9 @@ const COLOR_GRASS    = Color(0.25, 0.78, 0.18)
 const COLOR_PREDATOR = Color(0.90, 0.10, 0.10)
 const COLOR_SUPER    = Color(1.00, 0.88, 0.00)
 const COLOR_APEX     = Color(0.15, 0.35, 0.95)
-const COLOR_MATURE   = Color(0.04, 0.45, 0.12)
+const COLOR_MATURE   = Color(0.14, 0.55, 0.12)
 const COLOR_FAR_MATURE = Color(0.3, 0.9, 0.3)
-const COLOR_TREE       = Color(0.0, 0.3, 0.0) # Deep forest green
+const COLOR_TREE       = Color(0.10, 0.3, 0.03) # Deep forest green
 const COLOR_DUNG     = Color(0.45, 0.28, 0.10)
 const COLOR_POISON   = Color(0.6, 0.1, 0.8)
 const COLOR_WATER    = Color(0.1, 0.4, 0.9)
@@ -170,6 +170,7 @@ class Animal:
 	var rest_timer:    int      = 0
 	var water_target:  Vector2i = Vector2i(-1, -1)
 	var move_wait:     int      = 0
+	var water_search_timer: int = 0
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -619,7 +620,7 @@ func run_simulation_step() -> void:
 	if predators.size() < 5 or (herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04)):
 		spawn_red_invader()
 	run_plant_logic()
-	print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
+	#print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
 	
 	graph_history.append([predators.size(), apexes.size(), mature_set.size()])
 	if graph_history.size() > GRAPH_MAX_SAMPLES:
@@ -889,9 +890,16 @@ func run_predator_logic() -> void:
 						p.facing = w_step
 						moved = true
 				else:
-					# Blind search: walk 10 ticks in same direction, then scan (using scan_cd logic)
-					if not _try_move(p, p.facing):
+					# Blind search: walk in same direction, but turn every 10 ticks
+					p.water_search_timer -= 1
+					if p.water_search_timer <= 0:
+						p.water_search_timer = 10
 						p.facing = DIRS.pick_random()
+						
+					if not _try_move(p, p.facing):
+						# Blocked? Turn immediately
+						p.facing = DIRS.pick_random()
+						p.water_search_timer = 10
 						_try_move(p, p.facing)
 					moved = true
 			if not moved and _in_river(p.pos) and randf() < 0.6:
@@ -1086,9 +1094,15 @@ func run_apex_logic() -> void:
 						a.facing = w_step
 						moved = true
 				else:
-					# Blind search: walk in same direction to find water
+					# Blind search: walk in same direction to find water, turn every 10 ticks
+					a.water_search_timer -= 1
+					if a.water_search_timer <= 0:
+						a.water_search_timer = 10
+						a.facing = DIRS.pick_random()
+
 					if not _try_move(a, a.facing):
 						a.facing = DIRS.pick_random()
+						a.water_search_timer = 10
 						_try_move(a, a.facing)
 					moved = true
 			if _in_river(a.pos) and randf() < 0.6:
