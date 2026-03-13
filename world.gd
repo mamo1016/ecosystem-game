@@ -14,6 +14,7 @@ const MATURE   = 5
 const DUNG     = 6
 const POISON_PLANT = 7
 const WATER = 8
+const STONE = 9
 
 # --- COLOURS ---
 const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
@@ -39,6 +40,7 @@ const COLOR_MATURE_VARIANTS = [
 ]
 const COLOR_POISON   = Color(0.6, 0.1, 0.8)
 const COLOR_WATER    = Color(0.1, 0.4, 0.9)
+const COLOR_STONE    = Color(0.5, 0.5, 0.5)
 
 # --- MAP ---
 var MAP_WIDTH  = 640
@@ -181,6 +183,7 @@ var zone_x0: int = 0
 var zone_y0: int = 0
 var zone_x1: int = 0
 var zone_y1: int = 0
+var setting_zone_tl: bool = true
 
 func _ready() -> void:
 	var win_size = get_viewport().get_visible_rect().size
@@ -242,6 +245,10 @@ func _unhandled_input(event: InputEvent) -> void:
 					_buy_genome(gid)
 				elif Input.is_key_pressed(KEY_SHIFT):
 					_debug_place_water()
+				elif Input.is_key_pressed(KEY_CTRL):
+					_debug_place_stone()
+				elif Input.is_key_pressed(KEY_ALT):
+					_debug_set_plant_zone()
 				else:
 					plant_seed()
 			MOUSE_BUTTON_RIGHT:  _debug_spawn_predator()
@@ -280,6 +287,39 @@ func _debug_place_water() -> void:
 				if bg_image:
 					_paint_tile(pos.x, pos.y, COLOR_WATER)
 					bg_dirty = true
+	queue_redraw()
+
+func _debug_place_stone() -> void:
+	var center := _mouse_to_grid()
+	for dx in range(-2, 2):
+		for dy in range(-2, 2):
+			var pos := Vector2i(center.x + dx, center.y + dy)
+			if pos.x >= 0 and pos.x < MAP_WIDTH and pos.y >= 0 and pos.y < MAP_HEIGHT:
+				grid[pos.x][pos.y] = STONE
+				if bg_image:
+					_paint_tile(pos.x, pos.y, COLOR_STONE)
+					bg_dirty = true
+	queue_redraw()
+
+func _debug_set_plant_zone() -> void:
+	var pos := _mouse_to_grid()
+	if setting_zone_tl:
+		zone_x0 = pos.x
+		zone_y0 = pos.y
+		print("Plant zone TOP-LEFT set to ", pos)
+	else:
+		zone_x1 = pos.x
+		zone_y1 = pos.y
+		print("Plant zone BOTTOM-RIGHT set to ", pos)
+	
+	# Update background colors to reflect new zone
+	if bg_image:
+		for x in range(MAP_WIDTH):
+			for y in range(MAP_HEIGHT):
+				_paint_tile(x, y, _tile_pixel_color(x, y, grid[x][y]))
+		bg_dirty = true
+	
+	setting_zone_tl = !setting_zone_tl
 	queue_redraw()
 
 func _draw() -> void:
@@ -401,6 +441,7 @@ func _tile_pixel_color(x: int, y: int, tile_id: int) -> Color:
 		DUNG:   return COLOR_DUNG
 		POISON_PLANT: return COLOR_POISON
 		WATER:  return COLOR_WATER
+		STONE:  return COLOR_STONE
 		_:
 			var hash_idx: int = (x * 7 + y * 11 + (x ^ y) * 3) % 6
 			if x < zone_x0 or x >= zone_x1 or y < zone_y0 or y >= zone_y1:
@@ -446,7 +487,7 @@ func get_tile(pos: Vector2i) -> int:
 
 func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
-	if grid[pos.x][pos.y] == WATER: return # Water is permanent
+	if grid[pos.x][pos.y] == WATER or grid[pos.x][pos.y] == STONE: return 
 	grid[pos.x][pos.y] = id
 	if id == MATURE:
 		plants_this_tick += 1
@@ -719,6 +760,11 @@ func _try_move(animal: Animal, dir: Vector2i) -> bool:
 	var new_pos = animal.pos + dir
 	if new_pos.x < 0 or new_pos.y < 0 or new_pos.x + ANIMAL_SIZE > MAP_WIDTH or new_pos.y + ANIMAL_SIZE > MAP_HEIGHT:
 		return false
+	# Check for stones in the animal's new rect
+	for x in range(new_pos.x, new_pos.x + ANIMAL_SIZE):
+		for y in range(new_pos.y, new_pos.y + ANIMAL_SIZE):
+			if grid[x][y] == STONE:
+				return false
 	animal.pos = new_pos
 	return true
 

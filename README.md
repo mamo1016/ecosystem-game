@@ -10,31 +10,34 @@ A grid-based 2D ecosystem simulator built in [Godot Engine](https://godotengine.
 Your primary resource is **Seeds**. You start with 20 seeds and can hold a maximum of 30. Seeds are spent to place plants or apex predators, and can naturally replenish (30% chance) whenever a grass tile fully matures.
 
 ### Controls:
-*   **Left Mouse Button:** Deploys the currently selected seed (Grass, Super Plant, or Apex Predator) from the UI.
+*   **Left Mouse Button:** Deploys the currently selected seed (mature grass) from the UI.
 *   **Right Mouse Button (Debug):** Directly spawns a Red Predator.
 *   **Middle Mouse Button (Debug):** Directly spawns an Apex Predator.
+*   **Shift + Left Click (Debug):** Place a cluster of **Water** tiles.
+*   **Ctrl + Left Click (Debug):** Place a cluster of **Stone** tiles (Animals cannot walk through these).
+*   **Alt + Left Click (Debug):** Define the **Plantable Zone**. 
+    *   Click 1: Set Top-Left corner.
+    *   Click 2: Set Bottom-Right corner.
+    *   (The screen will refresh to show Arid vs Desert colors based on the new zone).
 
 ## 🌱 Entities & Mechanics
 
 ### Flora (Plants)
 Plants spread across the map and are the primary source of life for the ecosystem.
-*   **GRASS (Bright Green):** The growing phase of the plant. It takes 50 ticks to fully grow into Mature grass, visually filling up columns as it grows.
-*   **MATURE Grass (Dark Green):** Player-placed grass starts instantly as Mature (costs 3 seeds). Mature grass aggressively spreads outwards by spawning growing "GRASS" in all 4 adjacent empty tiles.
-*   **SUPER Plant (Yellow):** Costs 10 seeds. A special plant that survives as a "Super" for 20 ticks. During this lifespan, it has a small chance (2.5%) each tick to aggressively launch a spore and grow grass at a distant tile (up to 5 blocks away). After 20 ticks, it transforms into regular Mature grass.
+*   **GRASS (Bright Green):** The growing phase of the plant.
+*   **MATURE Grass (Dark Green):** Dark green tiles that spread to neighbors.
+*   **POISON Plant (Purple):** Has a small chance to spawn. Herbivores that eat this die instantly.
+*   **DUNG (Brown):** Left by herbivores. Slowly ripens into mature plants.
 
-### Red Predators (Red)
-These are herbivores/invaders that threaten the ecosystem by eating your plants.
-*   **Spawning:** Naturally spawn along the very edges of the map.
-*   **Diet:** They eat any plant. They take 3 turns to finish eating normal/super plants, but 4 turns to chew through Mature grass.
-*   **Starvation && Reproduction:** If they go 8 turns without finding food, they die of starvation. If a single Red Predator manages to eat 6 plants, it will spawn an offspring in an adjacent tile.
-
-### Apex Predators (Blue)
-These are carnivores that help control the Red Predator population.
-*   **Spawning:** You can spawn them using the "Predator" seed option for a hefty 30 seeds. Otherwise, they have a small chance to spawn naturally on the map edges *only* if the Red Predator count is greater than 3.
-*   **Diet:** They exclusively eat Red Predators and take 3 turns to eat one. They calmly walk *over* plants without destroying them.
-*   **Starvation && Reproduction:** Because they are apex predators, they can survive much longer without food—up to 50 turns until they starve. If an Apex Predator eats 3 Red Predators, it reproduces.
+### Animals
+*   **Red Predators (Red):** Herbivores. They eat plants and poop out dung. If they eat enough, they reproduce.
+*   **Apex Predators (Blue):** Carnivores. They hunt Red Predators. They have a "Home" position they return to for rest.
+*   **Thirst && Starvation:** Animals must find water and food. 
+    *   **Thirst:** Animals will scan for blue **Water** tiles. If thirsty (100+) and no water is seen, they will walk in a straight line to find it.
+    *   **Limits:** Herbivores starve at 300 ticks. Apex Predators starve at 500 ticks. Both die at 300 thirst.
 
 ## 🚀 How to Run
 1. Open Godot Engine (Version 4.x recommended).
 2. Import the `project.godot` file.
-3. Run the project!
+3. Use the **Debug Controls** to place water, stones, and define your forest zone before starting!
+4. Run the project!
