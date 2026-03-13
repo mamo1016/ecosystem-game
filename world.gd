@@ -141,6 +141,12 @@ var edge_set:   Dictionary = {}
 var edge_idx:   Dictionary = {}
 var plants_this_tick: int = 0
 
+# --- GRAPHING ---
+const GRAPH_MAX_SAMPLES = 100
+const GRAPH_W = 200
+const GRAPH_H = 80
+var graph_history: Array = [] # Stores [herb_count, apex_count, plant_count]
+
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
 class Animal:
@@ -294,6 +300,7 @@ func _draw() -> void:
 	draw_rect(Rect2(gx, gy, gs, gs), Color(0.8, 0.3, 1.0), false, 2.0)
 
 	_draw_genome_panel()
+	_draw_population_graph()
 
 func _draw_animal(animal: Animal, color: Color, texture: Texture2D) -> void:
 	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + ANIMAL_SIZE > MAP_WIDTH or animal.pos.y + ANIMAL_SIZE > MAP_HEIGHT:
@@ -465,6 +472,45 @@ func _update_edge_status(pos: Vector2i) -> void:
 			edge_idx.erase(pos)
 			edge_set.erase(pos)
 
+func _draw_population_graph() -> void:
+	if graph_history.is_empty(): return
+	var font := ThemeDB.fallback_font
+	var px: int = MAP_WIDTH * TILE_SIZE - GRAPH_W - 8
+	var py: int = MAP_HEIGHT * TILE_SIZE + int(MAP_OFFSET.y) - GRAPH_H - 8
+	
+	# Background
+	draw_rect(Rect2(px - 4, py - 4, GRAPH_W + 8, GRAPH_H + 24), Color(0, 0, 0, 0.7))
+	draw_rect(Rect2(px - 4, py - 4, GRAPH_W + 8, GRAPH_H + 24), Color.GRAY, false, 1.0)
+	draw_string(font, Vector2(px, py - 8), "POPULATION HISTORY", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color.WHITE)
+
+	# Find max for scaling
+	var max_val: float = 1.0
+	for sample in graph_history:
+		max_val = max(max_val, sample[0], sample[1], sample[2] * 0.05) # Scale plant down for graph
+
+	# Draw lines
+	var step: float = float(GRAPH_W) / GRAPH_MAX_SAMPLES
+	for i in range(1, graph_history.size()):
+		var s0 = graph_history[i-1]
+		var s1 = graph_history[i]
+		var x0 = px + (i-1) * step
+		var x1 = px + i * step
+		
+		# Herbivores (Red)
+		draw_line(Vector2(x0, py + GRAPH_H - (s0[0]/max_val)*GRAPH_H), Vector2(x1, py + GRAPH_H - (s1[0]/max_val)*GRAPH_H), COLOR_PREDATOR, 1.5)
+		# Apexes (Blue)
+		draw_line(Vector2(x0, py + GRAPH_H - (s0[1]/max_val)*GRAPH_H), Vector2(x1, py + GRAPH_H - (s1[1]/max_val)*GRAPH_H), COLOR_APEX, 1.5)
+		# Plants (Green - scaled)
+		draw_line(Vector2(x0, py + GRAPH_H - (s0[2]*0.05/max_val)*GRAPH_H), Vector2(x1, py + GRAPH_H - (s1[2]*0.05/max_val)*GRAPH_H), COLOR_MATURE, 1.0)
+
+	# Legend
+	var cur = graph_history.back()
+	var lx = px
+	var ly = py + GRAPH_H + 12
+	draw_string(font, Vector2(lx, ly), "H:%d" % cur[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 9, COLOR_PREDATOR)
+	draw_string(font, Vector2(lx + 40, ly), "A:%d" % cur[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 9, COLOR_APEX)
+	draw_string(font, Vector2(lx + 80, ly), "P:%d" % cur[2], HORIZONTAL_ALIGNMENT_LEFT, -1, 9, COLOR_MATURE)
+
 func _mouse_to_grid() -> Vector2i:
 	var mp := get_global_mouse_position()
 	return Vector2i(
@@ -513,6 +559,11 @@ func run_simulation_step() -> void:
 		spawn_red_invader()
 	run_plant_logic()
 	#print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
+	
+	graph_history.append([predators.size(), apexes.size(), mature_set.size()])
+	if graph_history.size() > GRAPH_MAX_SAMPLES:
+		graph_history.pop_front()
+		
 	update_ui()
 	queue_redraw()
 	var life := _count_life()
@@ -981,6 +1032,7 @@ func _on_restart_button_pressed() -> void:
 	edge_idx.clear()
 	for gid in GENOME_IDS:
 		genomes[gid]["unlocked"] = false
+	graph_history.clear()
 	_init_grid()
 	update_ui()
 	score_label.text = "Goal: 0 / %d" % GOAL_FILL_TARGET
