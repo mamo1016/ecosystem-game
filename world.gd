@@ -79,10 +79,10 @@ const THIRST_DANGER = 500
 const THIRST_LIMIT  = 1000
 
 # --- VISION ---
-const VISION_RANGE    = 60
-const APEX_SCAN_RANGE = 40
+const VISION_RANGE    = 5
+const APEX_SCAN_RANGE = 6
 const SCAN_INTERVAL   = 10
-const MAX_HERBIVORES  = 100
+const MAX_HERBIVORES  = 500
 const MAX_APEXES      = 20
 
 # --- PLANT SETTINGS ---
@@ -609,10 +609,10 @@ func _count_goal_plants() -> int:
 
 func run_simulation_step() -> void:
 	plants_this_tick = 0
-	if predators.size() < 5 or (herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04)):
-		spawn_red_invader()
+	#if predators.size() < 5 or (herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04)):
+	#	spawn_red_invader()
 	run_plant_logic()
-	#print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
+	print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
 	
 	graph_history.append([predators.size(), apexes.size(), mature_set.size()])
 	if graph_history.size() > GRAPH_MAX_SAMPLES:
