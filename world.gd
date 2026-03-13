@@ -88,7 +88,7 @@ const MAX_APEXES      = 20
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN      = 80
 const SEED_CAP            = 300
-const MAX_SPREAD_PER_TICK = 600
+const MAX_SPREAD_PER_TICK = 2000
 const GROWTH_PER_TICK     = 4
 var   update_interval     = 0.5
 
@@ -609,8 +609,8 @@ func _count_goal_plants() -> int:
 
 func run_simulation_step() -> void:
 	plants_this_tick = 0
-	#if predators.size() < 5 or (herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04)):
-	#	spawn_red_invader()
+	if predators.size() < 5 or (herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04)):
+		spawn_red_invader()
 	run_plant_logic()
 	print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
 	
