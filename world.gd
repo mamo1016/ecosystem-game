@@ -1,4 +1,4 @@
-extends Node2D
+﻿extends Node2D
 
 # --- UI REFERENCES ---
 @onready var seed_label     = $CanvasLayer/SeedLabel
@@ -64,7 +64,7 @@ const ANIMAL_SIZE    = 5
 const BIRTH_SUCCESS_CHANCE  = 0.30  # 5% give birth instantly when full; 95% go poop
 const HERB_STOMACH_CAP      = 60   # plants to eat before full
 const HERB_FOOD_TO_BREED    = 200  # lifetime plants eaten to reproduce (unused now, kept for ref)
-const FULL_DURATION         = 300
+const FULL_DURATION         = 100
 const STARVE_LIMIT          = 1000
 
 # --- APEX PREDATOR SETTINGS ---
@@ -625,9 +625,9 @@ func run_predator_logic() -> void:
 					var dx: int = p.pos.x - a.pos.x
 					var dy: int = p.pos.y - a.pos.y
 					if abs(dx) <= 35 and abs(dy) <= 35:
-						var step := Vector2i(signi(dx), 0) if abs(dx) >= abs(dy) else Vector2i(0, signi(dy))
-						if _try_move(p, step):
-							p.facing = step
+						var flee_step := Vector2i(signi(dx), 0) if abs(dx) >= abs(dy) else Vector2i(0, signi(dy))
+						if _try_move(p, flee_step):
+							p.facing = flee_step
 							moved = true
 						break
 			# Drink when in river
@@ -636,9 +636,9 @@ func run_predator_logic() -> void:
 			if not moved and p.thirst >= THIRST_DANGER:
 				var rdx: int = river_x + RIVER_WIDTH / 2 - p.pos.x
 				if rdx != 0:
-					var step := Vector2i(signi(rdx), 0)
-					if _try_move(p, step):
-						p.facing = step
+					var thirst_step := Vector2i(signi(rdx), 0)
+					if _try_move(p, thirst_step):
+						p.facing = thirst_step
 						moved = true
 			# River slows movement: 60% chance to skip move when in river
 			if not moved and _in_river(p.pos) and randf() < 0.6:
@@ -650,18 +650,18 @@ func run_predator_logic() -> void:
 					var dx: int = p.pos.x - other.pos.x
 					var dy: int = p.pos.y - other.pos.y
 					if abs(dx) <= 3 and abs(dy) <= 3:
-						var step := Vector2i(signi(dx), 0) if abs(dx) >= abs(dy) else Vector2i(0, signi(dy))
-						if _try_move(p, step):
-							p.facing = step
+						var flee_step := Vector2i(signi(dx), 0) if abs(dx) >= abs(dy) else Vector2i(0, signi(dy))
+						if _try_move(p, flee_step):
+							p.facing = flee_step
 							moved = true
 						break
 
 			# When full: move toward poop target instead of plants
 			if not moved and p.is_full and p.poop_target != Vector2i(-1, -1):
-				var diff: Vector2i = p.poop_target - p.pos
-				var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
-				if _try_move(p, step):
-					p.facing = step
+				var poop_diff: Vector2i = p.poop_target - p.pos
+				var poop_step: Vector2i = Vector2i(signi(poop_diff.x), 0) if abs(poop_diff.x) >= abs(poop_diff.y) else Vector2i(0, signi(poop_diff.y))
+				if _try_move(p, poop_step):
+					p.facing = poop_step
 					moved = true
 
 			# Scan for plants only when hungry
@@ -688,10 +688,10 @@ func run_predator_logic() -> void:
 
 			if not moved and p.target != Vector2i(-1, -1):
 				if _is_plant(get_tile(p.target)):
-					var diff: Vector2i = p.target - p.pos
-					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
-					if _try_move(p, step):
-						p.facing = step
+					var target_diff: Vector2i = p.target - p.pos
+					var target_step: Vector2i = Vector2i(signi(target_diff.x), 0) if abs(target_diff.x) >= abs(target_diff.y) else Vector2i(0, signi(target_diff.y))
+					if _try_move(p, target_step):
+						p.facing = target_step
 						moved = true
 				else:
 					p.target = Vector2i(-1, -1)
@@ -705,14 +705,14 @@ func run_predator_logic() -> void:
 				var wy: int = clampi(p.pos.y + int(sin(angle) * 20), 0, MAP_HEIGHT - 1)
 				p.wander_target = Vector2i(wx, wy)
 			if not moved and p.wander_target != Vector2i(-1, -1):
-				var diff: Vector2i = p.wander_target - p.pos
-				if abs(diff.x) + abs(diff.y) <= 2:
+				var wander_diff: Vector2i = p.wander_target - p.pos
+				if abs(wander_diff.x) + abs(wander_diff.y) <= 2:
 					p.wander_target = Vector2i(-1, -1)
 					p.wander_cd = 0  # pick new destination immediately
 				else:
-					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
-					if _try_move(p, step):
-						p.facing = step
+					var wander_step: Vector2i = Vector2i(signi(wander_diff.x), 0) if abs(wander_diff.x) >= abs(wander_diff.y) else Vector2i(0, signi(wander_diff.y))
+					if _try_move(p, wander_step):
+						p.facing = wander_step
 						moved = true
 					else:
 						var wander = DIRS.duplicate()
@@ -753,8 +753,8 @@ func run_apex_logic() -> void:
 			if a.eat_cd == 0:
 				for j in range(predators.size() - 1, -1, -1):
 					if j >= predators.size(): continue
-					var p_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
-					if my_rect.intersects(p_rect):
+					var eat_rect = Rect2i(predators[j].pos.x, predators[j].pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
+					if my_rect.intersects(eat_rect):
 						predators.remove_at(j)
 						a.stomach += 1
 						a.eat_cd = 50
@@ -775,8 +775,8 @@ func run_apex_logic() -> void:
 				var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
 				var best_dist = 9999
 				for p in predators:
-					var p_rect = Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
-					if view_rect.intersects(p_rect):
+					var scan_rect = Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
+					if view_rect.intersects(scan_rect):
 						var dist = abs(p.pos.x - a.pos.x) + abs(p.pos.y - a.pos.y)
 						if dist < best_dist:
 							best_dist = dist
@@ -792,42 +792,39 @@ func run_apex_logic() -> void:
 			if not moved and a.thirst >= THIRST_DANGER:
 				var rdx: int = river_x + RIVER_WIDTH / 2 - a.pos.x
 				if rdx != 0:
-					var step := Vector2i(signi(rdx), 0)
-					if _try_move(a, step):
-						a.facing = step
+					var thirst_step := Vector2i(signi(rdx), 0)
+					if _try_move(a, thirst_step):
+						a.facing = thirst_step
 						moved = true
 			# River slows movement: 60% chance to skip move when in river
 			if _in_river(a.pos) and randf() < 0.6:
 				moved = true
 			if not moved and best_p != null:
-				var diff = best_p.pos - a.pos
-				var step = Vector2i()
-				if abs(diff.x) >= abs(diff.y): step = Vector2i(signi(diff.x), 0)
-				else:                          step = Vector2i(0, signi(diff.y))
-				
-				if _try_move(a, step):
-					a.facing = step
+				var chase_diff: Vector2i = best_p.pos - a.pos
+				var chase_step: Vector2i = Vector2i(signi(chase_diff.x), 0) if abs(chase_diff.x) >= abs(chase_diff.y) else Vector2i(0, signi(chase_diff.y))
+				if _try_move(a, chase_step):
+					a.facing = chase_step
 					moved = true
 
 			# Resting: return to home and stay there
 			if a.rest_timer > 0 and a.home != Vector2i(-1, -1):
-				var home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
-				if not moved and home_dist > 3:
-					var diff: Vector2i = a.home - a.pos
-					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
-					if _try_move(a, step):
-						a.facing = step
+				var rest_home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
+				if not moved and rest_home_dist > 3:
+					var rest_diff: Vector2i = a.home - a.pos
+					var rest_step: Vector2i = Vector2i(signi(rest_diff.x), 0) if abs(rest_diff.x) >= abs(rest_diff.y) else Vector2i(0, signi(rest_diff.y))
+					if _try_move(a, rest_step):
+						a.facing = rest_step
 						moved = true
 				# At home: stay still (skip wander)
 				moved = true
 			# No prey visible (not resting): return to home
 			elif not moved and best_p == null and a.home != Vector2i(-1, -1):
-				var home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
-				if home_dist > 3:
-					var diff: Vector2i = a.home - a.pos
-					var step: Vector2i = Vector2i(signi(diff.x), 0) if abs(diff.x) >= abs(diff.y) else Vector2i(0, signi(diff.y))
-					if _try_move(a, step):
-						a.facing = step
+				var return_home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
+				if return_home_dist > 3:
+					var return_diff: Vector2i = a.home - a.pos
+					var return_step: Vector2i = Vector2i(signi(return_diff.x), 0) if abs(return_diff.x) >= abs(return_diff.y) else Vector2i(0, signi(return_diff.y))
+					if _try_move(a, return_step):
+						a.facing = return_step
 						moved = true
 			# Wander when at home or can't move
 			if not moved:
