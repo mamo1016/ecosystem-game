@@ -81,7 +81,7 @@ const THIRST_DANGER = 300
 const THIRST_LIMIT  = 900
 
 # --- VISION ---
-const VISION_RANGE    = 30
+const VISION_RANGE    = 60
 const APEX_SCAN_RANGE = 40
 const SCAN_INTERVAL   = 10
 const MAX_HERBIVORES  = 100
@@ -200,7 +200,6 @@ func _ready() -> void:
 	zone_y0 = int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
 	zone_x1 = int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
 	zone_y1 = int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
-	river_x  = zone_x1 + 2
 	goal_x   = MAP_WIDTH - GOAL_SIZE - 3
 	goal_y   = MAP_HEIGHT / 2 - GOAL_SIZE / 2
 
@@ -241,6 +240,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				var gid := _get_clicked_genome(mp)
 				if gid != "":
 					_buy_genome(gid)
+				elif Input.is_key_pressed(KEY_SHIFT):
+					_debug_place_water()
 				else:
 					plant_seed()
 			MOUSE_BUTTON_RIGHT:  _debug_spawn_predator()
@@ -269,6 +270,18 @@ func _debug_spawn_apex() -> void:
 
 # ---- DRAWING ----
 
+func _debug_place_water() -> void:
+	var center := _mouse_to_grid()
+	for dx in range(-3, 3):
+		for dy in range(-3, 3):
+			var pos := Vector2i(center.x + dx, center.y + dy)
+			if pos.x >= 0 and pos.x < MAP_WIDTH and pos.y >= 0 and pos.y < MAP_HEIGHT:
+				grid[pos.x][pos.y] = WATER
+				if bg_image:
+					_paint_tile(pos.x, pos.y, COLOR_WATER)
+					bg_dirty = true
+	queue_redraw()
+
 func _draw() -> void:
 	if bg_texture:
 		draw_texture(bg_texture, MAP_OFFSET)
@@ -292,10 +305,6 @@ func _draw() -> void:
 		Rect2(MAP_OFFSET.x + zone_x0 * TILE_SIZE, MAP_OFFSET.y + zone_y0 * TILE_SIZE,
 			  (zone_x1 - zone_x0) * TILE_SIZE, (zone_y1 - zone_y0) * TILE_SIZE),
 		Color(0.9, 0.8, 0.4, 0.5), false, 1.0)
-	var rx := MAP_OFFSET.x + river_x * TILE_SIZE
-	draw_rect(Rect2(rx, MAP_OFFSET.y, RIVER_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.1, 0.4, 0.9, 0.55))
-	draw_line(Vector2(rx, MAP_OFFSET.y), Vector2(rx, MAP_OFFSET.y + MAP_HEIGHT * TILE_SIZE), Color(0.2, 0.6, 1.0), 1.5)
-	draw_line(Vector2(rx + RIVER_WIDTH * TILE_SIZE, MAP_OFFSET.y), Vector2(rx + RIVER_WIDTH * TILE_SIZE, MAP_OFFSET.y + MAP_HEIGHT * TILE_SIZE), Color(0.2, 0.6, 1.0), 1.5)
 	var gx := MAP_OFFSET.x + goal_x * TILE_SIZE
 	var gy := MAP_OFFSET.y + goal_y * TILE_SIZE
 	var gs := GOAL_SIZE * TILE_SIZE
@@ -423,10 +432,7 @@ func _init_grid() -> void:
 	for x in range(MAP_WIDTH):
 		var col := []
 		col.resize(MAP_HEIGHT)
-		if x >= river_x and x < river_x + RIVER_WIDTH:
-			col.fill(WATER)
-		else:
-			col.fill(EMPTY)
+		col.fill(EMPTY)
 		grid.append(col)
 	if bg_image:
 		for x in range(MAP_WIDTH):
