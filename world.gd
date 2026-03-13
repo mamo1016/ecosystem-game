@@ -86,9 +86,9 @@ const MAX_APEXES      = 20
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN      = 80
 const SEED_CAP            = 300
-const MAX_SPREAD_PER_TICK = 600
+const MAX_SPREAD_PER_TICK = 1200
 const GROWTH_PER_TICK     = 4
-var   update_interval     = 0.1
+var   update_interval     = 0.5
 
 # --- WIN CONDITION ---
 const GOAL_SIZE        = 10
@@ -137,6 +137,7 @@ var mature_set: Dictionary = {}
 var mature_list: Array[Vector2i] = []
 var mature_idx: Dictionary = {}
 var spread_cursor: int = 0
+var plants_this_tick: int = 0
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
@@ -423,6 +424,7 @@ func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
 	grid[pos.x][pos.y] = id
 	if id == MATURE:
+		plants_this_tick += 1
 		if not mature_set.has(pos):
 			mature_idx[pos] = mature_list.size()
 			mature_list.append(pos)
@@ -483,8 +485,10 @@ func _count_goal_plants() -> int:
 # ---- SIMULATION ----
 
 func run_simulation_step() -> void:
+	plants_this_tick = 0
 	if herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04): spawn_red_invader()
 	run_plant_logic()
+	print("Plants spawned this tick: ", plants_this_tick)
 	update_ui()
 	queue_redraw()
 	var life := _count_life()
