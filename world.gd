@@ -1,4 +1,4 @@
-﻿extends Node2D
+extends Node2D
 
 # --- UI REFERENCES ---
 @onready var seed_label     = $CanvasLayer/SeedLabel
@@ -16,12 +16,12 @@ const DUNG     = 6
 # --- COLOURS ---
 const COLOR_EMPTY    = Color(0.74, 0.60, 0.38)
 const COLOR_DESERT_VARIANTS = [
-	Color(0.85, 0.71, 0.44),  # pale sand
-	Color(0.74, 0.58, 0.32),  # mid sand
-	Color(0.68, 0.50, 0.26),  # dry ochre
-	Color(0.80, 0.65, 0.38),  # warm sand
-	Color(0.90, 0.76, 0.48),  # bright dune
-	Color(0.65, 0.48, 0.24),  # dark earth
+	Color(0.85, 0.71, 0.44),
+	Color(0.74, 0.58, 0.32),
+	Color(0.68, 0.50, 0.26),
+	Color(0.80, 0.65, 0.38),
+	Color(0.90, 0.76, 0.48),
+	Color(0.65, 0.48, 0.24),
 ]
 const COLOR_GRASS    = Color(0.25, 0.78, 0.18)
 const COLOR_PREDATOR = Color(0.90, 0.10, 0.10)
@@ -30,10 +30,10 @@ const COLOR_APEX     = Color(0.15, 0.35, 0.95)
 const COLOR_MATURE   = Color(0.04, 0.50, 0.12)
 const COLOR_DUNG     = Color(0.45, 0.28, 0.10)
 const COLOR_MATURE_VARIANTS = [
-	Color(0.04, 0.50, 0.12),  # dark green
-	Color(0.12, 0.68, 0.22),  # medium green
-	Color(0.18, 0.38, 0.09),  # olive green
-	Color(0.06, 0.55, 0.32),  # teal green
+	Color(0.04, 0.50, 0.12),
+	Color(0.12, 0.68, 0.22),
+	Color(0.18, 0.38, 0.09),
+	Color(0.06, 0.55, 0.32),
 ]
 
 # --- MAP ---
@@ -41,60 +41,58 @@ var MAP_WIDTH  = 640
 var MAP_HEIGHT = 360
 const TILE_SIZE  = 4
 const MAP_OFFSET = Vector2(0, 40)
-const PLANT_ZONE_MARGIN = 0.22  # 22% margin on each side — center 56% is plantable
+const PLANT_ZONE_MARGIN = 0.22
 
 const COLOR_ARID_VARIANTS = [
-	Color(0.52, 0.43, 0.36),  # gray-brown
-	Color(0.47, 0.38, 0.30),  # dark rust
-	Color(0.58, 0.44, 0.33),  # rusty tan
-	Color(0.44, 0.37, 0.32),  # cool gray
-	Color(0.55, 0.41, 0.28),  # rust ochre
-	Color(0.42, 0.35, 0.28),  # deep rust
+	Color(0.52, 0.43, 0.36),
+	Color(0.47, 0.38, 0.30),
+	Color(0.58, 0.44, 0.33),
+	Color(0.44, 0.37, 0.32),
+	Color(0.55, 0.41, 0.28),
+	Color(0.42, 0.35, 0.28),
 ]
 
 # --- COSTS ---
 const COST_GRASS      = 3
-const COST_SUPER      = 10
 const COST_APEX_SPAWN = 30
 
 # --- ANIMAL SIZE ---
 const ANIMAL_SIZE    = 5
 
-# --- hervibor SETTINGS ---
-const BIRTH_SUCCESS_CHANCE  = 0.30  # 5% give birth instantly when full; 95% go poop
-const HERB_STOMACH_CAP      = 60   # plants to eat before full
-const HERB_FOOD_TO_BREED    = 200  # lifetime plants eaten to reproduce (unused now, kept for ref)
+# --- HERBIVORE SETTINGS ---
+const BIRTH_SUCCESS_CHANCE  = 0.30
+const HERB_STOMACH_CAP      = 60
+const HERB_FOOD_TO_BREED    = 200
 const FULL_DURATION         = 100
 const STARVE_LIMIT          = 1000
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
-const POOP_MIN_DIST         = 5   # minimum distance from current pos to poop spot
-const DUNG_RIPEN_TICKS      = 200  # 20 seconds at 10 ticks/sec before dung becomes a plant
+const POOP_MIN_DIST         = 5
+const DUNG_RIPEN_TICKS      = 200
 const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 2400
 
-const THIRST_DANGER = 300  # ticks before seeking water (30s)
-const THIRST_LIMIT  = 600  # ticks before dying of thirst (60s)
+const THIRST_DANGER = 300
+const THIRST_LIMIT  = 600
 
 # --- VISION ---
 const VISION_RANGE    = 30
 const APEX_SCAN_RANGE = 40
-const SCAN_INTERVAL   = 10   # re-scan for target every N ticks
-const MAX_HERBIVORES  = 100  # population cap
+const SCAN_INTERVAL   = 10
+const MAX_HERBIVORES  = 100
 const MAX_APEXES      = 20
 
-
 # --- PLANT SETTINGS ---
-const SUPER_LIFESPAN   = 80
-const SEED_CAP         = 30
+const SUPER_LIFESPAN      = 80
+const SEED_CAP            = 30
 const MAX_SPREAD_PER_TICK = 1200
-const GROWTH_PER_TICK  = 4
-var   update_interval  = 0.1
+const GROWTH_PER_TICK     = 4
+var   update_interval     = 0.1
 
 # --- WIN CONDITION ---
-const GOAL_SIZE        = 10     # 10x10 goal area outside the plant zone
-const GOAL_FILL_TARGET = 50     # need 50/100 tiles covered to win
+const GOAL_SIZE        = 10
+const GOAL_FILL_TARGET = 50
 var   goal_x: int = 0
 var   goal_y: int = 0
 
@@ -102,10 +100,30 @@ var   goal_y: int = 0
 const RIVER_WIDTH = 5
 var   river_x: int = 0
 
+# --- GENOME SYSTEM ---
+const GENOME_IDS     = ["speed", "range", "poison"]
+const GENOME_SLOT_H  = 30
+const GENOME_SLOT_W  = 180
+const GENOME_TITLE_H = 22
+const GENOME_GAP     = 3
+const GENOME_PANEL_X = 8
+
+var genomes: Dictionary = {
+	"speed":  {"name": "Speed x2",   "cost": 20, "unlocked": false, "color": Color(0.3, 0.95, 0.4)},
+	"range":  {"name": "Far Spread", "cost": 35, "unlocked": false, "color": Color(0.3, 0.7,  1.0)},
+	"poison": {"name": "Poison",     "cost": 60, "unlocked": false, "color": Color(0.8, 0.2,  0.9)},
+}
+
+# Extended directions when "range" genome is active (8 neighbors + 4 two-step cardinals)
+const DIRS_EXTENDED = [
+	Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0),
+	Vector2i(-1,-1), Vector2i(-1,1), Vector2i(1,-1), Vector2i(1,1),
+	Vector2i(0,-2), Vector2i(0,2), Vector2i(-2,0), Vector2i(2,0),
+]
+
 # --- STATE ---
 var grid: Array          = []
 var available_seeds: int = 20
-var current_seed_id: int = GRASS
 var time_passed: float   = 0.0
 var animal_time: float   = 0.0
 var game_active: bool    = true
@@ -115,28 +133,28 @@ var predators: Array = []
 var apexes: Array = []
 var plant_ages: Dictionary = {}
 var dung_ages:  Dictionary = {}
-var mature_set: Dictionary = {}   # Vector2i -> true, for all MATURE tiles
+var mature_set: Dictionary = {}
 var spread_cursor: int = 0
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 
 class Animal:
-	var pos:          Vector2i = Vector2i.ZERO
-	var stomach:      int      = 0
-	var is_full:      bool     = false
-	var poop_target:  Vector2i = Vector2i(-1, -1)
-	var full_timer:   int      = 0
-	var starve_timer: int      = 0
-	var age:          int      = 0
-	var eat_cd:       int      = 0
-	var scan_cd:      int      = 0
-	var target:       Vector2i = Vector2i(-1, -1)
-	var facing:         Vector2i = Vector2i.ZERO
-	var home:           Vector2i = Vector2i(-1, -1)
-	var thirst:         int      = 0
-	var wander_target:  Vector2i = Vector2i(-1, -1)
-	var wander_cd:      int      = 0
-	var rest_timer:     int      = 0
+	var pos:           Vector2i = Vector2i.ZERO
+	var stomach:       int      = 0
+	var is_full:       bool     = false
+	var poop_target:   Vector2i = Vector2i(-1, -1)
+	var full_timer:    int      = 0
+	var starve_timer:  int      = 0
+	var age:           int      = 0
+	var eat_cd:        int      = 0
+	var scan_cd:       int      = 0
+	var target:        Vector2i = Vector2i(-1, -1)
+	var facing:        Vector2i = Vector2i.ZERO
+	var home:          Vector2i = Vector2i(-1, -1)
+	var thirst:        int      = 0
+	var wander_target: Vector2i = Vector2i(-1, -1)
+	var wander_cd:     int      = 0
+	var rest_timer:    int      = 0
 
 var predator_texture: Texture2D
 var apex_texture: Texture2D
@@ -145,36 +163,32 @@ var bg_image: Image = null
 var bg_texture: ImageTexture = null
 var bg_dirty: bool = false
 
-# Cached plant zone bounds (computed once in _ready after MAP size is known)
 var zone_x0: int = 0
 var zone_y0: int = 0
 var zone_x1: int = 0
 var zone_y1: int = 0
 
 func _ready() -> void:
-	# Calculate map dimension based on the ACTUAL window size, not the whole monitor
 	var win_size = get_viewport().get_visible_rect().size
 	MAP_WIDTH  = int(win_size.x / TILE_SIZE)
-	MAP_HEIGHT = int((win_size.y - 40) / TILE_SIZE) # 40px for top UI bar
-	
+	MAP_HEIGHT = int((win_size.y - 40) / TILE_SIZE)
+
 	var canvas = get_node_or_null("CanvasLayer")
 	if canvas != null:
 		var hbox = canvas.get_node_or_null("HBoxContainer")
 		if hbox != null:
-			hbox.position = Vector2(win_size.x / 2 - 300, win_size.y - 50)
+			hbox.visible = false
 		var btn = canvas.get_node_or_null("RestartButton")
 		if btn != null:
 			btn.position = Vector2(win_size.x / 2 - 150, win_size.y / 2 - 25)
-	
+
 	zone_x0 = int(MAP_WIDTH  * PLANT_ZONE_MARGIN)
 	zone_y0 = int(MAP_HEIGHT * PLANT_ZONE_MARGIN)
 	zone_x1 = int(MAP_WIDTH  * (1.0 - PLANT_ZONE_MARGIN))
 	zone_y1 = int(MAP_HEIGHT * (1.0 - PLANT_ZONE_MARGIN))
-	# River: just outside the plant zone right edge
-	river_x = zone_x1 + 2
-	# Goal area: far right, past the river
-	goal_x = MAP_WIDTH - GOAL_SIZE - 3
-	goal_y = MAP_HEIGHT / 2 - GOAL_SIZE / 2
+	river_x  = zone_x1 + 2
+	goal_x   = MAP_WIDTH - GOAL_SIZE - 3
+	goal_y   = MAP_HEIGHT / 2 - GOAL_SIZE / 2
 
 	_init_grid()
 	bg_image = Image.create(MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE, false, Image.FORMAT_RGB8)
@@ -182,7 +196,6 @@ func _ready() -> void:
 		for y in range(MAP_HEIGHT):
 			_paint_tile(x, y, _tile_pixel_color(x, y, EMPTY))
 	bg_texture = ImageTexture.create_from_image(bg_image)
-	update_button_visuals()
 	update_ui()
 	predator_texture = load("res://predator_spritesheet.png")
 	apex_texture     = load("res://apex_spritesheet.png")
@@ -208,8 +221,14 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
+		var mp := get_global_mouse_position()
 		match event.button_index:
-			MOUSE_BUTTON_LEFT:   plant_seed(current_seed_id)
+			MOUSE_BUTTON_LEFT:
+				var gid := _get_clicked_genome(mp)
+				if gid != "":
+					_buy_genome(gid)
+				else:
+					plant_seed()
 			MOUSE_BUTTON_RIGHT:  _debug_spawn_predator()
 			MOUSE_BUTTON_MIDDLE: _debug_spawn_apex()
 
@@ -234,26 +253,26 @@ func _debug_spawn_apex() -> void:
 	apexes.append(_a)
 	queue_redraw()
 
+# ---- DRAWING ----
+
 func _draw() -> void:
-	# Draw background tiles as single texture
 	if bg_texture:
 		draw_texture(bg_texture, MAP_OFFSET)
 	else:
 		draw_rect(Rect2(MAP_OFFSET.x, MAP_OFFSET.y, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), Color(0.62, 0.48, 0.28))
 
-	# Draw plant sprites on top of background colors
 	if plant_texture:
 		var fw: float = plant_texture.get_width() / 3.0
 		var fh: float = plant_texture.get_height()
 		for pos in mature_set:
 			var px: float = MAP_OFFSET.x + pos.x * TILE_SIZE
 			var py: float = MAP_OFFSET.y + pos.y * TILE_SIZE
-			var region := Rect2(fw, 0, fw, fh)  # frame 1 = MATURE
+			var region := Rect2(fw, 0, fw, fh)
 			draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
 		for pos in plant_ages:
 			var px: float = MAP_OFFSET.x + pos.x * TILE_SIZE
 			var py: float = MAP_OFFSET.y + pos.y * TILE_SIZE
-			var region := Rect2(fw * 2, 0, fw, fh)  # frame 2 = SUPER
+			var region := Rect2(fw * 2, 0, fw, fh)
 			draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
 
 	for p in predators: _draw_animal(p, COLOR_PREDATOR, predator_texture)
@@ -274,6 +293,8 @@ func _draw() -> void:
 	draw_rect(Rect2(gx, gy, gs, gs), Color(0.7, 0.2, 0.9, 0.25))
 	draw_rect(Rect2(gx, gy, gs, gs), Color(0.8, 0.3, 1.0), false, 2.0)
 
+	_draw_genome_panel()
+
 func _draw_animal(animal: Animal, color: Color, texture: Texture2D) -> void:
 	if animal.pos.x < 0 or animal.pos.y < 0 or animal.pos.x + ANIMAL_SIZE > MAP_WIDTH or animal.pos.y + ANIMAL_SIZE > MAP_HEIGHT:
 		return
@@ -293,11 +314,66 @@ func _draw_animal(animal: Animal, color: Color, texture: Texture2D) -> void:
 
 func _facing_col(facing: Vector2i) -> int:
 	match facing:
-		Vector2i(1,  0): return 0   # right
-		Vector2i(-1, 0): return 1   # left
-		Vector2i(0, -1): return 2   # up
-		_:               return 3   # down
+		Vector2i(1,  0): return 0
+		Vector2i(-1, 0): return 1
+		Vector2i(0, -1): return 2
+		_:               return 3
 
+# ---- GENOME PANEL ----
+
+func _draw_genome_panel() -> void:
+	var font := ThemeDB.fallback_font
+	var n := GENOME_IDS.size()
+	var panel_h: int = GENOME_TITLE_H + n * (GENOME_SLOT_H + GENOME_GAP) + 8
+	var screen_bot: int = int(MAP_OFFSET.y) + MAP_HEIGHT * TILE_SIZE
+	var px: int = GENOME_PANEL_X
+	var py: int = screen_bot - panel_h - 8
+
+	draw_rect(Rect2(px - 4, py - 4, GENOME_SLOT_W + 12, panel_h + 8), Color(0, 0, 0, 0.80))
+	draw_rect(Rect2(px - 4, py - 4, GENOME_SLOT_W + 12, panel_h + 8), Color(0.5, 0.5, 0.5), false, 1.5)
+	draw_string(font, Vector2(px + 2, py + 15), "PLANT GENOME", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.9, 0.9, 0.9))
+
+	for i in range(n):
+		var gid: String = GENOME_IDS[i]
+		var g: Dictionary = genomes[gid]
+		var sy: int = py + GENOME_TITLE_H + i * (GENOME_SLOT_H + GENOME_GAP)
+		var sr := Rect2(px, sy, GENOME_SLOT_W, GENOME_SLOT_H)
+
+		var bg_col: Color = Color(0.06, 0.22, 0.06) if g["unlocked"] else Color(0.10, 0.10, 0.10)
+		draw_rect(sr, bg_col)
+		var border_col: Color = Color(0.25, 0.85, 0.3) if g["unlocked"] else Color(0.32, 0.32, 0.32)
+		draw_rect(sr, border_col, false, 1.0)
+		draw_rect(Rect2(px + 3, sy + 5, 8, GENOME_SLOT_H - 10), g["color"])
+		draw_string(font, Vector2(px + 16, sy + 20), g["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color.WHITE)
+
+		if g["unlocked"]:
+			draw_string(font, Vector2(px + GENOME_SLOT_W - 58, sy + 20), "ACTIVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.4, 1.0, 0.4))
+		else:
+			var can_afford: bool = available_seeds >= g["cost"]
+			var cost_col: Color = Color(1.0, 0.85, 0.3) if can_afford else Color(0.6, 0.5, 0.2)
+			draw_string(font, Vector2(px + GENOME_SLOT_W - 76, sy + 20), "%d seeds" % g["cost"], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, cost_col)
+
+func _get_clicked_genome(mp: Vector2) -> String:
+	var n := GENOME_IDS.size()
+	var panel_h: int = GENOME_TITLE_H + n * (GENOME_SLOT_H + GENOME_GAP) + 8
+	var screen_bot: int = int(MAP_OFFSET.y) + MAP_HEIGHT * TILE_SIZE
+	var py: int = screen_bot - panel_h - 8
+	for i in range(n):
+		var sy: int = py + GENOME_TITLE_H + i * (GENOME_SLOT_H + GENOME_GAP)
+		if Rect2(GENOME_PANEL_X, sy, GENOME_SLOT_W, GENOME_SLOT_H).has_point(mp):
+			return GENOME_IDS[i]
+	return ""
+
+func _buy_genome(gid: String) -> void:
+	var g: Dictionary = genomes[gid]
+	if g["unlocked"]: return
+	if available_seeds < g["cost"]: return
+	available_seeds -= g["cost"]
+	g["unlocked"] = true
+	update_ui()
+	queue_redraw()
+
+# ---- TILE HELPERS ----
 
 func _tile_pixel_color(x: int, y: int, tile_id: int) -> Color:
 	match tile_id:
@@ -395,13 +471,13 @@ func _count_goal_plants() -> int:
 				if _is_plant(grid[x][y]): count += 1
 	return count
 
+# ---- SIMULATION ----
+
 func run_simulation_step() -> void:
 	if herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04): spawn_red_invader()
-
 	run_plant_logic()
 	update_ui()
 	queue_redraw()
-
 	var life := _count_life()
 	if life == 0 and available_seeds == 0:
 		score_label.text = "GAME OVER — Extinction!"
@@ -411,52 +487,20 @@ func run_simulation_step() -> void:
 func _count_life() -> int:
 	return mature_set.size() + plant_ages.size()
 
-func plant_seed(tile_id: int) -> void:
-	var cost: int
-	match tile_id:
-		GRASS: cost = COST_GRASS
-		SUPER: cost = COST_SUPER
-		SEED_APEX:  cost = COST_APEX_SPAWN
-		_:     return
-	if available_seeds < cost: return
-
+func plant_seed() -> void:
+	if available_seeds < COST_GRASS: return
 	var center := _mouse_to_grid()
-
-	if tile_id == SEED_APEX:
-		var pos = center
-		pos.x = clampi(pos.x, 0, MAP_WIDTH - 1)
-		pos.y = clampi(pos.y, 0, MAP_HEIGHT - 1)
-		var _a := Animal.new()
-		_a.pos = pos
-		_a.facing = DIRS.pick_random()
-		_a.home = pos
-		apexes.append(_a)
-		available_seeds -= cost
-	elif tile_id == GRASS:
-		if not _in_plant_zone(center): return
-		var placed = false
-		for dx in range(-5, 5):
-			for dy in range(-5, 5):
-				var pos = Vector2i(center.x + dx, center.y + dy)
-				if get_tile(pos) == EMPTY and _in_plant_zone(pos):
-					set_tile(pos, MATURE)
-					placed = true
-		if placed:
-			available_seeds -= cost
-	elif tile_id == SUPER:
-		if not _in_plant_zone(center): return
-		var placed = false
-		for dx in range(-5, 5):
-			for dy in range(-5, 5):
-				var pos = Vector2i(center.x + dx, center.y + dy)
-				if get_tile(pos) == EMPTY and _in_plant_zone(pos):
-					set_tile(pos, SUPER)
-					plant_ages[pos] = 0
-					placed = true
-		if placed:
-			available_seeds -= cost
+	if not _in_plant_zone(center): return
+	var placed := false
+	for dx in range(-5, 5):
+		for dy in range(-5, 5):
+			var pos := Vector2i(center.x + dx, center.y + dy)
+			if get_tile(pos) == EMPTY and _in_plant_zone(pos):
+				set_tile(pos, MATURE)
+				placed = true
+	if placed:
+		available_seeds -= COST_GRASS
 	update_ui()
-
 
 func run_plant_logic() -> void:
 	# Ripen dung into plants
@@ -481,15 +525,19 @@ func run_plant_logic() -> void:
 		elif randf() < 0.025:
 			_spread_from_super(pos)
 
+	# Apply genome effects to spread
+	var spread_dirs: Array = DIRS_EXTENDED if genomes["range"]["unlocked"] else DIRS
+	var spread_prob: float = 0.10    if genomes["speed"]["unlocked"] else 0.05
+
 	var keys = mature_set.keys()
 	var n := keys.size()
 	if n > 0:
 		var count := mini(MAX_SPREAD_PER_TICK, n)
 		for i in range(count):
 			var pos: Vector2i = keys[(spread_cursor + i) % n]
-			for d in DIRS:
+			for d in spread_dirs:
 				var neighbor: Vector2i = pos + d
-				if get_tile(neighbor) == EMPTY and randf() < 0.05 and not _in_river(neighbor):
+				if get_tile(neighbor) == EMPTY and randf() < spread_prob and not _in_river(neighbor):
 					set_tile(neighbor, MATURE)
 					if randf() < 0.10: _add_seeds(1)
 		spread_cursor = (spread_cursor + count) % n
@@ -530,13 +578,11 @@ func _find_plant_in_rect(rect: Rect2i) -> Vector2i:
 	var start_y = max(0, rect.position.y)
 	var end_x = min(MAP_WIDTH, rect.position.x + rect.size.x)
 	var end_y = min(MAP_HEIGHT, rect.position.y + rect.size.y)
-	
 	var found = []
 	for x in range(start_x, end_x):
 		for y in range(start_y, end_y):
 			if _is_plant(grid[x][y]):
 				found.append(Vector2i(x, y))
-	
 	if found.is_empty():
 		return Vector2i(-1, -1)
 	return found.pick_random()
@@ -546,7 +592,6 @@ func _eat_all_plants_in_rect(rect: Rect2i) -> int:
 	var start_y = max(0, rect.position.y)
 	var end_x = min(MAP_WIDTH, rect.position.x + rect.size.x)
 	var end_y = min(MAP_HEIGHT, rect.position.y + rect.size.y)
-	
 	var eaten_count = 0
 	for x in range(start_x, end_x):
 		for y in range(start_y, end_y):
@@ -574,16 +619,18 @@ func _try_spawn_offspring(parent_pos: Vector2i, list: Array, home: Vector2i = Ve
 			_a.pos = new_pos
 			_a.facing = d
 			if home != Vector2i(-1, -1):
-				_a.home = new_pos  # offspring claims spawn point as its own territory
+				_a.home = new_pos
 			list.append(_a)
 			return
+
+# ---- HERBIVORE LOGIC ----
+
 func run_predator_logic() -> void:
 	var alive = []
 	for p in predators:
 		if alive.size() >= MAX_HERBIVORES: break
 
 		for i in range(1):
-			# Eat only when not full
 			if not p.is_full:
 				var plant_pos = _find_plant_in_rect(Rect2i(p.pos.x, p.pos.y, ANIMAL_SIZE, ANIMAL_SIZE))
 				if plant_pos != Vector2i(-1, -1):
@@ -591,6 +638,9 @@ func run_predator_logic() -> void:
 					set_tile(plant_pos, EMPTY)
 					p.stomach += 1
 					p.full_timer = 0
+					# Poison genome: eating may hurt the herbivore
+					if genomes["poison"]["unlocked"] and randf() < 0.3:
+						p.thirst += 60
 					if p.stomach >= HERB_STOMACH_CAP:
 						if randf() < BIRTH_SUCCESS_CHANCE:
 							_try_spawn_offspring(p.pos, alive)
@@ -601,9 +651,8 @@ func run_predator_logic() -> void:
 								p.is_full = true
 								p.poop_target = pt
 							else:
-								p.stomach = 0  # no poop spot found, just reset
+								p.stomach = 0
 
-			# Poop: when full and reached poop target
 			if p.is_full and p.poop_target != Vector2i(-1, -1):
 				var poop_tile: int = get_tile(p.poop_target)
 				if poop_tile != EMPTY and poop_tile != GRASS:
@@ -615,11 +664,10 @@ func run_predator_logic() -> void:
 					p.is_full = false
 					p.poop_target = Vector2i(-1, -1)
 
-			var moved = false
-			# Herbivores are slightly slower than hunters (20% skip)
+			var moved := false
 			if randf() < 0.2:
 				moved = true
-			# Flee from nearest apex: run until 35 tiles away
+			# Flee from nearest apex until 35 tiles away
 			if not moved:
 				for a in apexes:
 					var dx: int = p.pos.x - a.pos.x
@@ -632,7 +680,7 @@ func run_predator_logic() -> void:
 						break
 			# Drink when in river
 			if _in_river(p.pos): p.thirst = 0
-			# Seek river when thirsty (overrides other movement)
+			# Seek river when thirsty
 			if not moved and p.thirst >= THIRST_DANGER:
 				var rdx: int = river_x + RIVER_WIDTH / 2 - p.pos.x
 				if rdx != 0:
@@ -640,11 +688,9 @@ func run_predator_logic() -> void:
 					if _try_move(p, thirst_step):
 						p.facing = thirst_step
 						moved = true
-			# River slows movement: 60% chance to skip move when in river
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
 			if not moved:
-				# Avoid nearest herbivore within 3 tiles (early exit)
 				for other in predators:
 					if other == p: continue
 					var dx: int = p.pos.x - other.pos.x
@@ -656,7 +702,6 @@ func run_predator_logic() -> void:
 							moved = true
 						break
 
-			# When full: move toward poop target instead of plants
 			if not moved and p.is_full and p.poop_target != Vector2i(-1, -1):
 				var poop_diff: Vector2i = p.poop_target - p.pos
 				var poop_step: Vector2i = Vector2i(signi(poop_diff.x), 0) if abs(poop_diff.x) >= abs(poop_diff.y) else Vector2i(0, signi(poop_diff.y))
@@ -664,7 +709,6 @@ func run_predator_logic() -> void:
 					p.facing = poop_step
 					moved = true
 
-			# Scan for plants only when hungry
 			if p.is_full: p.scan_cd = 0
 			if p.scan_cd <= 0 and not p.is_full:
 				p.scan_cd = SCAN_INTERVAL
@@ -696,7 +740,6 @@ func run_predator_logic() -> void:
 				else:
 					p.target = Vector2i(-1, -1)
 
-			# Update wander destination every 100 ticks (10s)
 			p.wander_cd -= 1
 			if p.wander_cd <= 0:
 				p.wander_cd = 100
@@ -708,21 +751,21 @@ func run_predator_logic() -> void:
 				var wander_diff: Vector2i = p.wander_target - p.pos
 				if abs(wander_diff.x) + abs(wander_diff.y) <= 2:
 					p.wander_target = Vector2i(-1, -1)
-					p.wander_cd = 0  # pick new destination immediately
+					p.wander_cd = 0
 				else:
 					var wander_step: Vector2i = Vector2i(signi(wander_diff.x), 0) if abs(wander_diff.x) >= abs(wander_diff.y) else Vector2i(0, signi(wander_diff.y))
 					if _try_move(p, wander_step):
 						p.facing = wander_step
 						moved = true
 					else:
-						var wander = DIRS.duplicate()
-						wander.shuffle()
-						for d in wander:
+						var wander_dirs = DIRS.duplicate()
+						wander_dirs.shuffle()
+						for d in wander_dirs:
 							if _try_move(p, d):
 								p.facing = d
 								moved = true
 								break
-			
+
 			p.full_timer += 1
 			if p.full_timer >= FULL_DURATION:
 				p.is_full = false
@@ -739,17 +782,18 @@ func run_predator_logic() -> void:
 		if p.starve_timer < STARVE_LIMIT and p.thirst < THIRST_LIMIT:
 			alive.append(p)
 	predators = alive
+
+# ---- APEX LOGIC ----
+
 func run_apex_logic() -> void:
 	var alive = []
 	for a in apexes:
 		if alive.size() >= MAX_APEXES: break
 
-		# 4x movement loop
 		for i in range(1):
 			if a.eat_cd > 0:
 				a.eat_cd -= 1
 			var my_rect = Rect2i(a.pos.x, a.pos.y, ANIMAL_SIZE, ANIMAL_SIZE)
-			# Eat when cooldown done
 			if a.eat_cd == 0:
 				for j in range(predators.size() - 1, -1, -1):
 					if j >= predators.size(): continue
@@ -758,19 +802,17 @@ func run_apex_logic() -> void:
 						predators.remove_at(j)
 						a.stomach += 1
 						a.eat_cd = 50
-						a.rest_timer = 100  # rest 10s at home after eating
+						a.rest_timer = 100
 						while a.stomach >= APEX_FOOD_TO_BREED:
 							a.stomach -= APEX_FOOD_TO_BREED
 							_try_spawn_offspring(a.pos, alive, a.home)
 						break
 
-			# Tick rest timer only when at home
 			if a.rest_timer > 0 and a.home != Vector2i(-1, -1):
-				var _home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
-				if _home_dist <= 3:
+				var rest_home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
+				if rest_home_dist <= 3:
 					a.rest_timer -= 1
 			var best_p = null
-			# Only scan for prey when not resting
 			if a.rest_timer == 0:
 				var view_rect = Rect2i(a.pos.x - APEX_SCAN_RANGE, a.pos.y - APEX_SCAN_RANGE, ANIMAL_SIZE + APEX_SCAN_RANGE * 2, ANIMAL_SIZE + APEX_SCAN_RANGE * 2)
 				var best_dist = 9999
@@ -785,10 +827,8 @@ func run_apex_logic() -> void:
 			if best_p == null and a.rest_timer == 0 and randf() < 0.05:
 				a.facing = DIRS.pick_random()
 
-			var moved = a.eat_cd > 0  # stay still while eating
-			# Drink when in river
+			var moved := a.eat_cd > 0
 			if _in_river(a.pos): a.thirst = 0
-			# Seek river when thirsty (overrides prey-chasing)
 			if not moved and a.thirst >= THIRST_DANGER:
 				var rdx: int = river_x + RIVER_WIDTH / 2 - a.pos.x
 				if rdx != 0:
@@ -796,7 +836,6 @@ func run_apex_logic() -> void:
 					if _try_move(a, thirst_step):
 						a.facing = thirst_step
 						moved = true
-			# River slows movement: 60% chance to skip move when in river
 			if _in_river(a.pos) and randf() < 0.6:
 				moved = true
 			if not moved and best_p != null:
@@ -806,7 +845,6 @@ func run_apex_logic() -> void:
 					a.facing = chase_step
 					moved = true
 
-			# Resting: return to home and stay there
 			if a.rest_timer > 0 and a.home != Vector2i(-1, -1):
 				var rest_home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
 				if not moved and rest_home_dist > 3:
@@ -815,9 +853,7 @@ func run_apex_logic() -> void:
 					if _try_move(a, rest_step):
 						a.facing = rest_step
 						moved = true
-				# At home: stay still (skip wander)
 				moved = true
-			# No prey visible (not resting): return to home
 			elif not moved and best_p == null and a.home != Vector2i(-1, -1):
 				var return_home_dist: int = abs(a.pos.x - a.home.x) + abs(a.pos.y - a.home.y)
 				if return_home_dist > 3:
@@ -826,20 +862,18 @@ func run_apex_logic() -> void:
 					if _try_move(a, return_step):
 						a.facing = return_step
 						moved = true
-			# Wander when at home or can't move
 			if not moved:
 				if _try_move(a, a.facing):
 					moved = true
 				else:
-					var wander = DIRS.duplicate()
-					wander.shuffle()
-					for d in wander:
+					var wander_dirs = DIRS.duplicate()
+					wander_dirs.shuffle()
+					for d in wander_dirs:
 						if _try_move(a, d):
 							a.facing = d
 							moved = true
 							break
 
-			# 40% bonus move step (makes hunters ~40% faster)
 			if randf() < 0.4 and a.eat_cd == 0 and a.rest_timer == 0:
 				_try_move(a, a.facing)
 
@@ -851,6 +885,8 @@ func run_apex_logic() -> void:
 		if a.starve_timer < APEX_STARVE_LIMIT and a.thirst < THIRST_LIMIT:
 			alive.append(a)
 	apexes = alive
+
+# ---- UI ----
 
 func update_ui() -> void:
 	seed_label.text = "Seeds: %d / %d" % [available_seeds, SEED_CAP]
@@ -872,28 +908,15 @@ func _on_restart_button_pressed() -> void:
 	dung_ages.clear()
 	mature_set.clear()
 	spread_cursor = 0
+	for gid in GENOME_IDS:
+		genomes[gid]["unlocked"] = false
 	_init_grid()
 	update_ui()
 	score_label.text = "Goal: 0 / %d" % GOAL_FILL_TARGET
 	restart_button.hide()
 	queue_redraw()
 
-func _on_btn_grass_pressed() -> void:
-	current_seed_id = GRASS
-	update_button_visuals()
-
-func _on_btn_super_pressed() -> void:
-	current_seed_id = SUPER
-	update_button_visuals()
-
-func _on_btn_predator_pressed() -> void:
-	current_seed_id = SEED_APEX
-	update_button_visuals()
-
-func update_button_visuals() -> void:
-	var btn_grass:    Button = $CanvasLayer/HBoxContainer/BtnGrass
-	var btn_super:    Button = $CanvasLayer/HBoxContainer/BtnSuper
-	var btn_predator: Button = $CanvasLayer/HBoxContainer/BtnPredator
-	btn_grass.disabled    = (current_seed_id == GRASS)
-	btn_super.disabled    = (current_seed_id == SUPER)
-	btn_predator.disabled = (current_seed_id == SEED_APEX)
+# Stubs kept for scene signal compatibility
+func _on_btn_grass_pressed() -> void: pass
+func _on_btn_super_pressed() -> void: pass
+func _on_btn_predator_pressed() -> void: pass
