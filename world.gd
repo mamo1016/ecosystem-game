@@ -475,8 +475,9 @@ func _update_edge_status(pos: Vector2i) -> void:
 func _draw_population_graph() -> void:
 	if graph_history.is_empty(): return
 	var font := ThemeDB.fallback_font
-	var px: int = MAP_WIDTH * TILE_SIZE - GRAPH_W - 8
-	var py: int = MAP_HEIGHT * TILE_SIZE + int(MAP_OFFSET.y) - GRAPH_H - 8
+	var view_size := get_viewport_rect().size
+	var px: int = int(view_size.x) - GRAPH_W - 12
+	var py: int = int(view_size.y) - GRAPH_H - 28 # Moved up to fit legend
 	
 	# Background
 	draw_rect(Rect2(px - 4, py - 4, GRAPH_W + 8, GRAPH_H + 24), Color(0, 0, 0, 0.7))
