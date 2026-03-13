@@ -134,6 +134,8 @@ var apexes: Array = []
 var plant_ages: Dictionary = {}
 var dung_ages:  Dictionary = {}
 var mature_set: Dictionary = {}
+var mature_list: Array[Vector2i] = []
+var mature_idx: Dictionary = {}
 var spread_cursor: int = 0
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
@@ -264,11 +266,6 @@ func _draw() -> void:
 	if plant_texture:
 		var fw: float = plant_texture.get_width() / 3.0
 		var fh: float = plant_texture.get_height()
-		for pos in mature_set:
-			var px: float = MAP_OFFSET.x + pos.x * TILE_SIZE
-			var py: float = MAP_OFFSET.y + pos.y * TILE_SIZE
-			var region := Rect2(fw, 0, fw, fh)
-			draw_texture_rect_region(plant_texture, Rect2(px, py, TILE_SIZE, TILE_SIZE), region)
 		for pos in plant_ages:
 			var px: float = MAP_OFFSET.x + pos.x * TILE_SIZE
 			var py: float = MAP_OFFSET.y + pos.y * TILE_SIZE
@@ -405,6 +402,8 @@ func _tile_colour(id: int) -> Color:
 func _init_grid() -> void:
 	grid = []
 	mature_set.clear()
+	mature_list.clear()
+	mature_idx.clear()
 	for x in range(MAP_WIDTH):
 		var col := []
 		col.resize(MAP_HEIGHT)
@@ -424,9 +423,19 @@ func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
 	grid[pos.x][pos.y] = id
 	if id == MATURE:
-		mature_set[pos] = true
+		if not mature_set.has(pos):
+			mature_idx[pos] = mature_list.size()
+			mature_list.append(pos)
+			mature_set[pos] = true
 	else:
-		mature_set.erase(pos)
+		if mature_set.has(pos):
+			var idx: int = mature_idx[pos]
+			var last: Vector2i = mature_list[mature_list.size() - 1]
+			mature_list[idx] = last
+			mature_idx[last] = idx
+			mature_list.resize(mature_list.size() - 1)
+			mature_idx.erase(pos)
+			mature_set.erase(pos)
 	if bg_image:
 		_paint_tile(pos.x, pos.y, _tile_pixel_color(pos.x, pos.y, id))
 		bg_dirty = true
@@ -528,12 +537,11 @@ func run_plant_logic() -> void:
 	# Apply genome effects to spread
 	var spread_prob: float = 0.10 if genomes["speed"]["unlocked"] else 0.05
 
-	var keys = mature_set.keys()
-	var n := keys.size()
+	var n := mature_list.size()
 	if n > 0:
 		var count := mini(MAX_SPREAD_PER_TICK, n)
 		for i in range(count):
-			var pos: Vector2i = keys[(spread_cursor + i) % n]
+			var pos: Vector2i = mature_list[(spread_cursor + i) % n]
 			for d in DIRS:
 				var neighbor: Vector2i = pos + d
 				if get_tile(neighbor) == EMPTY and randf() < spread_prob and not _in_river(neighbor):
@@ -916,6 +924,8 @@ func _on_restart_button_pressed() -> void:
 	plant_ages.clear()
 	dung_ages.clear()
 	mature_set.clear()
+	mature_list.clear()
+	mature_idx.clear()
 	spread_cursor = 0
 	for gid in GENOME_IDS:
 		genomes[gid]["unlocked"] = false
