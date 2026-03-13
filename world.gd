@@ -76,7 +76,7 @@ const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 2400
 
 const THIRST_DANGER = 300
-const THIRST_LIMIT  = 600
+const THIRST_LIMIT  = 900
 
 # --- VISION ---
 const VISION_RANGE    = 30
@@ -512,7 +512,7 @@ func run_simulation_step() -> void:
 	if predators.size() < 5 or (herbivore_auto_spawn and (predators.size() == 0 or randf() < 0.04)):
 		spawn_red_invader()
 	run_plant_logic()
-	print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
+	#print("Plants spawned: %d | Active Edges: %d" % [plants_this_tick, edge_list.size()])
 	update_ui()
 	queue_redraw()
 	var life := _count_life()
