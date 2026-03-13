@@ -423,7 +423,6 @@ func get_tile(pos: Vector2i) -> int:
 
 func set_tile(pos: Vector2i, id: int) -> void:
 	if pos.x < 0 or pos.x >= MAP_WIDTH or pos.y < 0 or pos.y >= MAP_HEIGHT: return
-	var old_id = items[pos.x][pos.y] if "items" in self else grid[pos.x][pos.y] # fallback to grid
 	grid[pos.x][pos.y] = id
 	if id == MATURE:
 		plants_this_tick += 1
@@ -442,7 +441,7 @@ func set_tile(pos: Vector2i, id: int) -> void:
 func _is_on_edge(pos: Vector2i) -> bool:
 	if not mature_set.has(pos): return false
 	for d in DIRS:
-		var n := pos + d
+		var n: Vector2i = pos + d
 		if get_tile(n) == EMPTY and not _in_river(n):
 			return true
 	return false
