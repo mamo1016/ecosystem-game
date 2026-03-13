@@ -136,7 +136,6 @@ var dung_ages:  Dictionary = {}
 var mature_set: Dictionary = {}
 var mature_list: Array[Vector2i] = []
 var mature_idx: Dictionary = {}
-var spread_cursor: int = 0
 var plants_this_tick: int = 0
 
 const DIRS = [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
@@ -545,7 +544,7 @@ func run_plant_logic() -> void:
 	if n > 0:
 		var count := mini(MAX_SPREAD_PER_TICK, n)
 		for i in range(count):
-			var pos: Vector2i = mature_list[(spread_cursor + i) % n]
+			var pos: Vector2i = mature_list.pick_random()
 			for d in DIRS:
 				var neighbor: Vector2i = pos + d
 				if get_tile(neighbor) == EMPTY and randf() < spread_prob and not _in_river(neighbor):
@@ -561,7 +560,6 @@ func run_plant_logic() -> void:
 				)
 				if get_tile(fly_pos) == EMPTY and not _in_river(fly_pos):
 					set_tile(fly_pos, MATURE)
-		spread_cursor = (spread_cursor + count) % n
 
 func _spread_from_super(parent: Vector2i) -> void:
 	var jump := Vector2i(randi_range(-8, 8), randi_range(-8, 8))
@@ -930,7 +928,6 @@ func _on_restart_button_pressed() -> void:
 	mature_set.clear()
 	mature_list.clear()
 	mature_idx.clear()
-	spread_cursor = 0
 	for gid in GENOME_IDS:
 		genomes[gid]["unlocked"] = false
 	_init_grid()
