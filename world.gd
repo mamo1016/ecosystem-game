@@ -73,7 +73,7 @@ const STARVE_LIMIT          = 300
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
 const POOP_MIN_DIST         = 5
-const DUNG_RIPEN_TICKS      = 200
+const DUNG_RIPEN_TICKS      = 300
 const APEX_FULL_DURATION    = 500
 const APEX_STARVE_LIMIT     = 500
 
@@ -659,6 +659,13 @@ func run_plant_logic() -> void:
 			dung_ages.erase(pos)
 			continue
 		dung_ages[pos] += 1
+		# Dung spread: 2% chance to grow a plant in neighbor tile
+		if randf() < 0.02:
+			for d in DIRS:
+				var neighbor = pos + d
+				if get_tile(neighbor) == EMPTY and not _in_river(neighbor):
+					set_tile(neighbor, MATURE)
+					break
 		if dung_ages[pos] >= DUNG_RIPEN_TICKS:
 			set_tile(pos, MATURE)
 			dung_ages.erase(pos)
@@ -781,6 +788,17 @@ func _try_move(animal: Animal, dir: Vector2i) -> bool:
 				on_stone = true
 				break
 		if on_stone: break
+	
+	# Avoid poop 1 block away
+	var near_poop := false
+	for x in range(new_pos.x - 1, new_pos.x + ANIMAL_SIZE + 1):
+		for y in range(new_pos.y - 1, new_pos.y + ANIMAL_SIZE + 1):
+			if x >= 0 and x < MAP_WIDTH and y >= 0 and y < MAP_HEIGHT:
+				if grid[x][y] == DUNG:
+					near_poop = true
+					break
+		if near_poop: break
+	if near_poop: return false
 	
 	if on_stone:
 		animal.move_wait = 4 # Substantial delay = very slow movement
