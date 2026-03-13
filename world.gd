@@ -1,4 +1,4 @@
-extends Node2D
+﻿extends Node2D
 
 # --- UI REFERENCES ---
 @onready var seed_label     = $CanvasLayer/SeedLabel
@@ -85,7 +85,7 @@ const MAX_APEXES      = 20
 
 # --- PLANT SETTINGS ---
 const SUPER_LIFESPAN      = 80
-const SEED_CAP            = 30
+const SEED_CAP            = 300
 const MAX_SPREAD_PER_TICK = 1200
 const GROWTH_PER_TICK     = 4
 var   update_interval     = 0.1
@@ -526,8 +526,7 @@ func run_plant_logic() -> void:
 			_spread_from_super(pos)
 
 	# Apply genome effects to spread
-	var spread_dirs: Array = DIRS_EXTENDED if genomes["range"]["unlocked"] else DIRS
-	var spread_prob: float = 0.10    if genomes["speed"]["unlocked"] else 0.05
+	var spread_prob: float = 0.10 if genomes["speed"]["unlocked"] else 0.05
 
 	var keys = mature_set.keys()
 	var n := keys.size()
@@ -535,11 +534,21 @@ func run_plant_logic() -> void:
 		var count := mini(MAX_SPREAD_PER_TICK, n)
 		for i in range(count):
 			var pos: Vector2i = keys[(spread_cursor + i) % n]
-			for d in spread_dirs:
+			for d in DIRS:
 				var neighbor: Vector2i = pos + d
 				if get_tile(neighbor) == EMPTY and randf() < spread_prob and not _in_river(neighbor):
 					set_tile(neighbor, MATURE)
 					if randf() < 0.10: _add_seeds(1)
+			# Far Spread genome: 1% chance to launch a seed 10-15 blocks away
+			if genomes["range"]["unlocked"] and randf() < 0.01:
+				var fly_angle: float = randf() * TAU
+				var fly_dist: float = randf_range(10.0, 15.0)
+				var fly_pos := Vector2i(
+					clampi(pos.x + int(cos(fly_angle) * fly_dist), 0, MAP_WIDTH - 1),
+					clampi(pos.y + int(sin(fly_angle) * fly_dist), 0, MAP_HEIGHT - 1)
+				)
+				if get_tile(fly_pos) == EMPTY and not _in_river(fly_pos):
+					set_tile(fly_pos, MATURE)
 		spread_cursor = (spread_cursor + count) % n
 
 func _spread_from_super(parent: Vector2i) -> void:
@@ -827,7 +836,7 @@ func run_apex_logic() -> void:
 			if best_p == null and a.rest_timer == 0 and randf() < 0.05:
 				a.facing = DIRS.pick_random()
 
-			var moved := a.eat_cd > 0
+			var moved: bool = a.eat_cd > 0
 			if _in_river(a.pos): a.thirst = 0
 			if not moved and a.thirst >= THIRST_DANGER:
 				var rdx: int = river_x + RIVER_WIDTH / 2 - a.pos.x
