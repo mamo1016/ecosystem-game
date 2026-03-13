@@ -68,17 +68,17 @@ const BIRTH_SUCCESS_CHANCE  = 0.50
 const HERB_STOMACH_CAP      = 60
 const HERB_FOOD_TO_BREED    = 200
 const FULL_DURATION         = 300
-const STARVE_LIMIT          = 1000
+const STARVE_LIMIT          = 300
 
 # --- APEX PREDATOR SETTINGS ---
 const APEX_FOOD_TO_BREED    = 3
 const POOP_MIN_DIST         = 5
 const DUNG_RIPEN_TICKS      = 200
 const APEX_FULL_DURATION    = 500
-const APEX_STARVE_LIMIT     = 2400
+const APEX_STARVE_LIMIT     = 500
 
-const THIRST_DANGER = 300
-const THIRST_LIMIT  = 900
+const THIRST_DANGER = 100
+const THIRST_LIMIT  = 300
 
 # --- VISION ---
 const VISION_RANGE    = 60
@@ -810,7 +810,7 @@ func run_predator_logic() -> void:
 						break
 			# Drink when in river
 			if _in_river(p.pos): p.thirst = 0
-			# Seek river when thirsty
+			# Seek water when thirsty (Higher priority than food)
 			if not moved and p.thirst >= THIRST_DANGER:
 				if p.water_target != Vector2i(-1, -1):
 					var w_diff: Vector2i = p.water_target - p.pos
@@ -819,8 +819,11 @@ func run_predator_logic() -> void:
 						p.facing = w_step
 						moved = true
 				else:
-					# If no water is seen, just wander randomly or continue current path
-					pass
+					# Blind search: walk 10 ticks in same direction, then scan (using scan_cd logic)
+					if not _try_move(p, p.facing):
+						p.facing = DIRS.pick_random()
+						_try_move(p, p.facing)
+					moved = true
 			if not moved and _in_river(p.pos) and randf() < 0.6:
 				moved = true
 			if not moved:
@@ -999,7 +1002,7 @@ func run_apex_logic() -> void:
 
 			var moved: bool = a.eat_cd > 0
 			if _in_river(a.pos): a.thirst = 0
-			# Seek river when thirsty
+			# Seek water when thirsty (Higher priority than food/hunt)
 			if not moved and a.thirst >= THIRST_DANGER:
 				if a.water_target != Vector2i(-1, -1):
 					var w_diff: Vector2i = a.water_target - a.pos
@@ -1007,6 +1010,12 @@ func run_apex_logic() -> void:
 					if _try_move(a, w_step):
 						a.facing = w_step
 						moved = true
+				else:
+					# Blind search: walk in same direction to find water
+					if not _try_move(a, a.facing):
+						a.facing = DIRS.pick_random()
+						_try_move(a, a.facing)
+					moved = true
 			if _in_river(a.pos) and randf() < 0.6:
 				moved = true
 			if not moved and best_p != null:
